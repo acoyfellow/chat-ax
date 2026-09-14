@@ -1,0 +1,24 @@
+src/room.ts
+  s_4f3d73861137de::t_08a47166775974 941-942,994
+scripts/e2e-agent-isolation.mjs
+  s_4f3d73861137de::t_fb12a1f382bcc8 46,60,65
+src/agent-do.ts
+  s_4f3d73861137de::t_435118941bbc89 401,403
+  s_4f3d73861137de::t_d4e249e0dd3fa5 247-248
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "33c704698d286a7de44afc9e0b83c20341608aca",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
