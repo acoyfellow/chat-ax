@@ -1,0 +1,21 @@
+src/agent-private-resources.test.ts
+  s_99b55ecf7d26fa::t_3924cb36c19cde 1-20
+src/agent-private-resources.ts
+  s_99b55ecf7d26fa::t_2f9e933baa5119 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5a0b099f4ac7892f7a0bde70c5b7505ffb62b46b",
+  "prompts": {},
+  "sessions": {
+    "s_99b55ecf7d26fa": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a01133-f7dc-78e5-bff4-bbe27a662c2a",
+        "model": "grok-4.6"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
