@@ -1,0 +1,21 @@
+src/worker.ts
+  s_4f3d73861137de::t_a873123b866f40 1326,1338,1352-1353
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_afc6e843c68bb5 647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "551a365853cd0f61b7548054d72f69d5cb4a7a42",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
