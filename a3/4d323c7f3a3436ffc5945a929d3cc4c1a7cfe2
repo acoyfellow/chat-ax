@@ -1,0 +1,21 @@
+chat-ax-authority-test.wrangler.jsonc
+  s_4f3d73861137de::t_3aae27b53e3712 19
+scripts/e2e-local-a2a-army.mjs
+  s_4f3d73861137de::t_59c9c33f90ec4e 1-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a34d323c7f3a3436ffc5945a929d3cc4c1a7cfe2",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
