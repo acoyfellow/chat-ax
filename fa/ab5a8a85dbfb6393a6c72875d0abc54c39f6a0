@@ -1,0 +1,21 @@
+src/fleet-operations.test.ts
+  s_4f3d73861137de::t_bd47e67375827a 42-47
+src/fleet-operations.ts
+  s_4f3d73861137de::t_2b3e24d5ebc5dc 91-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "faab5a8a85dbfb6393a6c72875d0abc54c39f6a0",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
