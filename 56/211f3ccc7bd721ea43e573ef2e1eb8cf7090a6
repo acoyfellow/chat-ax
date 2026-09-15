@@ -1,0 +1,27 @@
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_63893b533be134 25-26,28,30,48-50,54,73-81,87-95
+  s_4f3d73861137de::t_c0a4ab4a826e6d 35-39,127
+src/ui/Modal.svelte
+  s_4f3d73861137de::t_7cf701c5590fac 2-3,10-43,53,56
+src/fleet-operations.ts
+  s_4f3d73861137de::t_ea97a959eaaef6 84,90-105
+  s_4f3d73861137de::t_209282371ddc10 106
+src/fleet-operations.test.ts
+  s_4f3d73861137de::t_e79d67756d77fe 33-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "56211f3ccc7bd721ea43e573ef2e1eb8cf7090a6",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
