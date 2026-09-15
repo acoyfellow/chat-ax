@@ -1,0 +1,19 @@
+scripts/e2e-production-mcp-realtime-authority.mjs
+  s_2a77a1542d3982::t_7a5cd6c6d21617 51,66,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2355a3b09842a4f0d8b878bc44f0799de4f35564",
+  "prompts": {},
+  "sessions": {
+    "s_2a77a1542d3982": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019e4aeb-bfd3-7cb8-82c3-9b8c799f4c6e",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
