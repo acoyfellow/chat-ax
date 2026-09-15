@@ -1,0 +1,26 @@
+src/agent-communication.test.ts
+  s_4f3d73861137de::t_002ff21ac4ef03 51-55
+scripts/e2e-local-a2a-army.mjs
+  s_4f3d73861137de::t_6ea5d58bb1a333 148-166
+  s_4f3d73861137de::t_ab59f542062fcb 272-273
+src/agent-communication.ts
+  s_4f3d73861137de::t_206d281f658b0a 43,79
+src/room.ts
+  s_4f3d73861137de::t_595e9e13cc8068 1442-1469,1697-1706,1712-1713,1720-1726,1728,1749-1760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6b957c563c45e2b134c17fe64a9b8bc2dcbb1d39",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
