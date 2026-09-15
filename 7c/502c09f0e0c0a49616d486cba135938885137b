@@ -1,0 +1,30 @@
+src/room.ts
+  s_4f3d73861137de::t_bd840481c0ce91 479-486,488-491,495-496,503-521,531-532,1292-1297
+  s_4f3d73861137de::t_c45a67879ca448 1166,1243,1249-1253,1256
+  s_4f3d73861137de::t_cef85d9e624bf3 1832-1833,1840-1851
+  s_4f3d73861137de::t_8192aea477a7e5 487,492-494,497-502,522-530
+src/agent-do.ts
+  s_4f3d73861137de::t_71b293208841e5 201,709-712,714
+  s_4f3d73861137de::t_cc259aa75d473e 713
+src/worker.ts
+  s_4f3d73861137de::t_b2afd9ee31721a 467-476
+scripts/e2e-local-a2a-army.mjs
+  s_4f3d73861137de::t_8f0b44a2c23838 346-353,370
+  s_4f3d73861137de::t_76362f884cb2ae 361-369,371-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7c502c09f0e0c0a49616d486cba135938885137b",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
