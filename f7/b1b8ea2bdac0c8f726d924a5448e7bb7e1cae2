@@ -1,0 +1,22 @@
+scripts/e2e-local-a2a-army.mjs
+  s_4f3d73861137de::t_2bdbeb2c9729c7 255-261
+  s_4f3d73861137de::t_f3f0ffa5760ee1 105-122
+src/room.ts
+  s_4f3d73861137de::t_c36011b58b2ea5 1225,1540-1548,1550-1562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f7b1b8ea2bdac0c8f726d924a5448e7bb7e1cae2",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
