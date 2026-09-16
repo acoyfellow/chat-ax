@@ -1,0 +1,26 @@
+.guardrailignore
+  s_4f3d73861137de::t_feaf2a793ac9c7 19
+scripts/create-production-fleet-demo.mjs
+  s_4f3d73861137de::t_c3d07cb24d9e56 258-260
+  s_4f3d73861137de::t_d22c2b87aa37fd 295-296,299-301,305,307-315,318-321
+  s_4f3d73861137de::t_b306ddf2140a39 46-50,78-79,137-139,157-164
+  s_4f3d73861137de::t_34068c70d34b8c 190-193,206-228,236-249,251-252,255-257,261-263,265-274,283-285,288
+scripts/verify-fleet-demo.mjs
+  s_4f3d73861137de::t_9d9cf7486e8acd 2-3,20-50,52-58,72-75,77-102,104-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a04bfab2be4d7df70397edf7216e84335066041a",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
