@@ -1,0 +1,22 @@
+scripts/e2e-gherkin-production.mjs
+  s_4f3d73861137de::t_6011a5a4f98c00 109
+  s_4f3d73861137de::t_64f33af3ca5571 353-361,363-379,385
+  s_4f3d73861137de::t_3bd3f63612401e 380-384,390
+  s_4f3d73861137de::t_a12f1250eb043a 362
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "59a8f2be1a1aaadf19c7ee127db53feb94786785",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
