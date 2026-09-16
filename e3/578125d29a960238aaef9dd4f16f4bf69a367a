@@ -1,0 +1,55 @@
+src/person-requests.ts
+  s_4f3d73861137de::t_ed89567e82e594 30,55-58,72-75,104-107
+  s_4f3d73861137de::t_4ae04cc497c636 3-9,195-198
+scripts/verify-gherkin-receipt.mjs
+  s_4f3d73861137de::t_559c41555e6020 36
+src/agent-do.ts
+  s_4f3d73861137de::t_6660e9f52ff556 123,134-139,150,259-264,266-274,277-282,285-296,301-314
+  s_4f3d73861137de::t_d3764bb1f73fd6 101
+  s_4f3d73861137de::t_ecaadde22c0811 283-284,300
+  s_4f3d73861137de::t_c0d55586228369 140-149,265
+  s_4f3d73861137de::t_5a1e0ef8ecc252 275-276
+  s_4f3d73861137de::t_7ad21439b35afc 297-299
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_78e7ce53c29739 90
+  s_4f3d73861137de::t_916df1daf16679 202-203,206-207
+  s_4f3d73861137de::t_055b20fef3a82b 179,578,580-581
+src/room.ts
+  s_4f3d73861137de::t_0ce03c927914e7 1420-1429,1921,2077
+  s_4f3d73861137de::t_9cc32c88388d6e 269-276
+  s_4f3d73861137de::t_0ec9aedfa7896f 3497,3509-3532,3539-3564
+  s_4f3d73861137de::t_a287d032030c76 120-126,1419,1430,1975,1978-1985
+  s_4f3d73861137de::t_3ceda67f62cd68 258-261,2304
+src/worker.ts
+  s_4f3d73861137de::t_a1014e018e8af7 424-427
+  s_4f3d73861137de::t_f1b32cd3bce965 428
+  s_4f3d73861137de::t_442bf3b59fb3b0 223-227
+  s_4f3d73861137de::t_57e43f7626633e 1190-1192,1201
+scripts/e2e-gherkin-production.mjs
+  s_4f3d73861137de::t_130580c5983a7f 898,923
+  s_4f3d73861137de::t_f5fbc11c73a652 664,678,689
+src/presence.test.ts
+  s_4f3d73861137de::t_4ca5a0c39ba813 21,26-31
+src/person-requests.test.ts
+  s_4f3d73861137de::t_e100722cce46b1 35-50
+src/turn-authority.ts
+  s_4f3d73861137de::t_d78b32793a2f17 6,11,14-19,22-27
+src/presence.ts
+  s_4f3d73861137de::t_94928e861e8d1c 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e3578125d29a960238aaef9dd4f16f4bf69a367a",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
