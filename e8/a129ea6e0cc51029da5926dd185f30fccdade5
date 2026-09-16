@@ -1,0 +1,23 @@
+scripts/verify-fleet-demo.mjs
+  s_4f3d73861137de::t_cdb83388615ab1 1-44
+scripts/create-production-fleet-demo.mjs
+  s_4f3d73861137de::t_dceb8a9fbbe5b0 1-238
+.guardrailignore
+  s_4f3d73861137de::t_7803107e55fd48 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e8a129ea6e0cc51029da5926dd185f30fccdade5",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
