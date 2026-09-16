@@ -1,0 +1,77 @@
+package.json
+  s_4f3d73861137de::t_757e4faab70d27 19
+scripts/production-receipt-contract.mjs
+  s_4f3d73861137de::t_bca2e73475c8ff 1-28
+  s_4f3d73861137de::t_eaff3e6586e36d 29-40
+scripts/verify-gherkin-receipt.mjs
+  s_4f3d73861137de::t_49ebcb6ecb6a31 1-36
+  s_4f3d73861137de::t_bd4a117ecb2da4 37
+src/agent-do.ts
+  s_4f3d73861137de::t_f906ae0f892d24 33
+  s_4f3d73861137de::t_8dfdf137aba6c8 201-209,349-352,727-737
+  s_4f3d73861137de::t_4900f43e45be60 738
+scripts/e2e-gherkin-production.mjs
+  s_4f3d73861137de::t_babcf0146983f9 242-250,281-285
+  s_4f3d73861137de::t_29b12724097c14 64-71,232-235
+  s_4f3d73861137de::t_be59d503f1630d 318-325
+  s_4f3d73861137de::t_146ef1fe4d439c 5-8,291-313
+  s_4f3d73861137de::t_09657788ddab94 138-150,153-154
+  s_4f3d73861137de::t_3bb7d509be9ced 1-4,9-63,72-137,151-152,155-201,216,229-230,236-241,251-255,257-280,286-290,314-317,331-340
+  s_4f3d73861137de::t_485a3dccdc41b4 256
+  s_4f3d73861137de::t_27187ec2c1845b 202-204,213-215
+  s_4f3d73861137de::t_7b6ee84f2caa25 217-219,226-228
+  s_4f3d73861137de::t_08c92eb75e192b 231
+  s_4f3d73861137de::t_00d6a87a495104 326-330
+  s_4f3d73861137de::t_37a88e2fc6f097 341-343
+  s_4f3d73861137de::t_147e8802404ba8 205-212,220-225,344-573
+scripts/check-production-readiness.mjs
+  s_4f3d73861137de::t_ef6fde67cbb4c4 4-8,54,66-71
+  s_4f3d73861137de::t_5e1eb63133a864 18-19,25-29,31-36,38-47,53,55-57
+  s_4f3d73861137de::t_6e5e6384279fb7 58,60,72-74,77-84
+src/readiness-receipts.test.ts
+  s_4f3d73861137de::t_1b18c43be68b94 1-43
+  s_4f3d73861137de::t_a8166f541edd3c 44-47
+scripts/e2e-local-a2a-army.mjs
+  s_4f3d73861137de::t_b9111bbb6f58aa 138,206,283,292-293,315,377,387-390,392-405
+  s_4f3d73861137de::t_5578b227716130 391
+  s_4f3d73861137de::t_4a70c26f884e02 135-137
+  s_4f3d73861137de::t_d4e0603d6a40a3 203-205
+  s_4f3d73861137de::t_ff1fc91beeadbc 281-282
+  s_4f3d73861137de::t_dab88fb6209a91 284-286,289-291
+  s_4f3d73861137de::t_7bd73e1cc14342 312-314
+  s_4f3d73861137de::t_446c6f9b8890dd 374-376
+  s_4f3d73861137de::t_423815acb88c08 126-134,179-182,202,287-288
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_94cb4833fe5a04 59-63,66-72
+  s_4f3d73861137de::t_f5b78562e15c29 97-98,101,103
+src/ui/Modal.svelte
+  s_4f3d73861137de::t_c913291425494e 33-37,40,43
+src/room.ts
+  s_4f3d73861137de::t_d8357bd4187a3c 1185,1275-1277,1327
+  s_4f3d73861137de::t_84db30397141e5 1164-1174
+  s_4f3d73861137de::t_38dea305c21875 479
+  s_4f3d73861137de::t_c74a0698f40426 1175-1177,1182-1184
+  s_4f3d73861137de::t_2372e4185402a4 1186
+  s_4f3d73861137de::t_ed81118ee3910a 1326
+  s_4f3d73861137de::t_bc16dc27ffed61 519,521,529-530,1178-1181,1283-1290,1857-1861
+src/worker.ts
+  s_4f3d73861137de::t_dc362652538135 4
+  s_4f3d73861137de::t_b1da9155de8b16 457-462
+  s_4f3d73861137de::t_b36fe4ff139190 473,476,480-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cb4f11ba26fba58db8983411fa816277b39645d4",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
