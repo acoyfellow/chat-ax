@@ -1,0 +1,19 @@
+scripts/create-production-fleet-demo.mjs
+  s_4f3d73861137de::t_129d2a7c40bd3b 291-293,353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6794ee394b14e9975b78b4e9d1f73cdc9ac37fb4",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
