@@ -1,0 +1,36 @@
+src/room.ts
+  s_4f3d73861137de::t_b26675063895a4 1219-1220
+  s_4f3d73861137de::t_a227b090e4c3ff 1865,2011
+src/worker.ts
+  s_4f3d73861137de::t_fb5e31c611f22a 1083-1087
+  s_4f3d73861137de::t_fa32655a5e01f7 478,506,1110
+scripts/e2e-gherkin-production.mjs
+  s_4f3d73861137de::t_cb0f77fc58caaf 123
+  s_4f3d73861137de::t_f0de12d2807bed 600
+  s_4f3d73861137de::t_e3f0fb87356c05 589-590,592,599,601
+  s_4f3d73861137de::t_b3dc8b0fb461ea 535,839,863
+  s_4f3d73861137de::t_d90fc3b32ba830 756,758,762
+  s_4f3d73861137de::t_61ef3e7a5e4f3a 121-122
+  s_4f3d73861137de::t_76c3774fc8e0f4 124
+  s_4f3d73861137de::t_d62d6401cc637e 15-17,147-174,352-353,820
+scripts/verify-gherkin-receipt.mjs
+  s_4f3d73861137de::t_afa079bf8fc481 35
+.guardrailignore
+  s_4f3d73861137de::t_ec101637c8c57f 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e0ee6276b73af41f3143e63e8f8a8416fe44f579",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
