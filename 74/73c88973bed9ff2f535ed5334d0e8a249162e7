@@ -1,0 +1,21 @@
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_68c082fb64eea0 192
+src/ui/AgentAvatar.svelte
+  s_4f3d73861137de::t_d6432570589c49 122,249-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7473c88973bed9ff2f535ed5334d0e8a249162e7",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
