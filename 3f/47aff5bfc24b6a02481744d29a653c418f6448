@@ -1,0 +1,39 @@
+scripts/e2e-fleet-canvas.mjs
+  s_4f3d73861137de::t_b836c705457464 22-36
+  s_4f3d73861137de::t_194aeced6efdb7 1-21,37-41,43,45-55,57-58,60-64,66-67,69,71-72,74-110,112-115,117,119-129,131-143,145-147,149
+  s_4f3d73861137de::t_de787143956688 130
+  s_4f3d73861137de::t_d55898f779f7b1 44,56,59,65,68,70,73
+  s_4f3d73861137de::t_1a3ba3f0cad3a3 111,118
+  s_4f3d73861137de::t_e78eab621624b2 116
+  s_4f3d73861137de::t_9e4238ceaf2cb6 42,144,148
+scripts/e2e-production-ui.mjs
+  s_4f3d73861137de::t_8e0f6a822dc1ea 121,131,170,172,174-178
+package.json
+  s_4f3d73861137de::t_30d0a1023c7a60 21
+scripts/e2e-gherkin-production.mjs
+  s_4f3d73861137de::t_f5e8ba8ab47037 755,796-798,800-807
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_4996fd82790a4d 2,26-28,30,51-65,74-77,81-82,84-96,100-116,120-126,131,133-135
+  s_4f3d73861137de::t_1019fbc1492a38 254,256-261,276,289,297,304
+  s_4f3d73861137de::t_e689d4acd537d9 79-80,303
+  s_4f3d73861137de::t_eb511123dc5578 230
+  s_4f3d73861137de::t_fea0065f5e82b1 229
+features/chat-ax.feature
+  s_4f3d73861137de::t_047b4dfcf79692 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3f47aff5bfc24b6a02481744d29a653c418f6448",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
