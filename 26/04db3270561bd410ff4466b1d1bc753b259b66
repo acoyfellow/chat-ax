@@ -1,0 +1,40 @@
+scripts/e2e-fleet-canvas.mjs
+  s_4f3d73861137de::t_ca1bd931604142 111-112,114,116-119,123
+  s_4f3d73861137de::t_6411bda35bcc33 148-150
+  s_4f3d73861137de::t_0ad6d31d7f6a51 147
+  s_4f3d73861137de::t_dbe4953a4b4817 59
+  s_4f3d73861137de::t_8477d6bbfce3b2 15-17,20,26,37,47-58,60-89,95-96,98-99,109,120-122,124-125,131-132,151-152,154,159-160,173-175,177,182-183,195-197,205-207,217-219,222-229,233-235,237
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_c2a308f004e985 52-66,68-71,93-101,112-123,144-152,154-158,165-168,246-250,254-255,269-271,282,301,307,337
+  s_4f3d73861137de::t_5c3f25f67acb6f 28
+package.json
+  s_4f3d73861137de::t_8313a5d9c37de9 21-22
+src/ui/Chat.svelte
+  s_dd9db32fc7489c::t_36afe69f2a2071 45-46,203-204,208-231,260,577,589,1000
+oxlint.standard.json
+  s_4f3d73861137de::t_ad279dc25a39dd 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2604db3270561bd410ff4466b1d1bc753b259b66",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    },
+    "s_dd9db32fc7489c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a042f9-198d-7e2d-b4c8-1bbd3e7d6084",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
