@@ -1,0 +1,23 @@
+scripts/e2e-fleet-canvas.mjs
+  s_4f3d73861137de::t_84ba67170d0503 90-111
+  s_4f3d73861137de::t_185b3e09a8570a 112-115,264
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_2cb780bc68e81c 211-214,219,267-279,285
+  s_4f3d73861137de::t_f50d0831e42ed8 220-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4895a9aa9de9c3e33bce234044c8a5f3127b2826",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
