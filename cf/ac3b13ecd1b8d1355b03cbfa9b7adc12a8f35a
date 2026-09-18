@@ -1,0 +1,60 @@
+src/room.ts
+  s_4f3d73861137de::t_cebe62731f155d 108,229,232-252,1006-1028,1030-1050,1052-1075,1077-1079,1174-1192,1194-1198,1200,1202-1207,1209-1220,1222-1238,1240-1309,1315-1316,1321-1343,1347-1371,1374-1378
+  s_4f3d73861137de::t_196b8b5edd7fc1 1076,1080-1173
+  s_4f3d73861137de::t_0cef8bfca86a98 1201,2269-2271
+  s_4f3d73861137de::t_be56a0647662f6 1310-1314,1379-1385
+  s_4f3d73861137de::t_390436fcc2e2fd 1029,1051,1193,1199,1208,1221,1239,1317-1320,1344-1346
+src/agent-do.ts
+  s_b08565c2e30630::t_8d824191a3d27b 909-919
+scripts/prove-universal-mcp.mjs
+  s_4f3d73861137de::t_d1ea0f95d3d622 1-127
+src/mcp.ts
+  s_4f3d73861137de::t_937c323a603690 10-24,53,105,111-113,297-301,309,319-322,324,330,347,362,376,389,399-421,427-437,440-444,446
+scripts/universal-mcp-route-policy.mjs
+  s_b08565c2e30630::t_849a35d7bbc532 1-78
+src/universal-mcp.test.ts
+  s_4f3d73861137de::t_302572bd1f65cd 1-190
+scripts/audit-universal-mcp-coverage.mjs
+  s_4f3d73861137de::t_e9cb9fde96928f 1-52
+src/universal-mcp.ts
+  s_4f3d73861137de::t_a85c0a2c3e71ad 287-309
+  s_b08565c2e30630::t_bc5ef857b9da9e 1-17,265-286,310-588,591-628
+  s_4f3d73861137de::t_06de1dec2bccd0 18-264,589-590
+scripts/e2e-universal-mcp.mjs
+  s_4f3d73861137de::t_1f3afeed16f23b 267
+  s_4f3d73861137de::t_e8cea2fc4fafbe 283-284,286-295
+  s_4f3d73861137de::t_d26228a85d3931 296-297
+  s_4f3d73861137de::t_2a0952b0aa6338 27,63-266,268-282,285,298-372
+  s_b08565c2e30630::t_d28aacf109ac71 1-26,28-62,373-421
+src/worker.ts
+  s_4f3d73861137de::t_f617da592d832d 25,414-453,571-586,591-592,599,604-608,648
+  s_4f3d73861137de::t_ab30fe9633e1eb 595-596,600
+src/orchestrator-mcp.ts
+  s_4f3d73861137de::t_26c8e12b482e62 53-55,67-165
+  s_4f3d73861137de::t_1201c22b3c6507 24-36,166-179,187,195-216,218-230,233-238,241-242
+  s_4f3d73861137de::t_41a7f7c6f3b5b3 56-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cfac3b13ecd1b8d1355b03cbfa9b7adc12a8f35a",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    },
+    "s_b08565c2e30630": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0b5e9-8f33-7306-9594-d7eafc896e9f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
