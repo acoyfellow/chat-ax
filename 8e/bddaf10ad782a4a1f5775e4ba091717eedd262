@@ -1,0 +1,19 @@
+src/agent-do.ts
+  s_4f3d73861137de::t_2b35833b7d70b2 323,1334,1357-1358,1806-1811,1815,1882-1883
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8ebddaf10ad782a4a1f5775e4ba091717eedd262",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
