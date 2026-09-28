@@ -1,0 +1,19 @@
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_a7ad0d8d11be10 496-500,504,849-850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "26ec9d6ef6ce90c662f7d85dd3cb45eaa0cea6da",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
