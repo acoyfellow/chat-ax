@@ -1,0 +1,27 @@
+src/tool-activity-detail.ts
+  s_4f3d73861137de::t_18b82deb334729 1-44
+src/agent-do.ts
+  s_4f3d73861137de::t_74bd0951b09d30 30,256,323-324
+src/room.ts
+  s_4f3d73861137de::t_2a58f33617499d 69,154-155,527,537
+src/tool-activity-detail.test.ts
+  s_4f3d73861137de::t_57d8bd375560db 1-24
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_5c6addd8461e94 126-136,730-741,1115-1121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "064773c1ba101ae8f98c3e20ab324e2355914453",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
