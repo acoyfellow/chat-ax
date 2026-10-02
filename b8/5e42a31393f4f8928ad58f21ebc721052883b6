@@ -1,0 +1,25 @@
+package-lock.json
+  s_4f3d73861137de::t_062255729a09cf 15,1379-2074,4429-4434,5815-5820,7319-7335,7723-7732,8403
+package.json
+  s_4f3d73861137de::t_349562cdafb8b8 33
+src/pi/durable/do-sqlite-database.test.ts
+  s_4f3d73861137de::t_4715843789d751 1-80
+src/pi/durable/do-sqlite-database.ts
+  s_4f3d73861137de::t_a03d4e425fa023 1-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "b85e42a31393f4f8928ad58f21ebc721052883b6",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
