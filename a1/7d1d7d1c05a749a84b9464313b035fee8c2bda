@@ -1,0 +1,25 @@
+scripts/prove-pi-durable.mjs
+  s_4f3d73861137de::t_d369552326c5f9 1-173
+.guardrailignore
+  s_4f3d73861137de::t_bef236da017f37 21
+src/agent-do.ts
+  s_4f3d73861137de::t_1e6f2977e3dd22 964-980,983,1263-1273,1690-1696
+src/worker.ts
+  s_4f3d73861137de::t_a6972acde89a98 17,571-582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a17d1d7d1c05a749a84b9464313b035fee8c2bda",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
