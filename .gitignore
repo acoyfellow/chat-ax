@@ -1,0 +1,12 @@
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.local
+dist/
+*.log
+.context/
+.guardrail/
+.pi/
+.DS_Store
+src/bundles.generated.ts
+build/

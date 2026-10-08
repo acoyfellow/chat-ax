@@ -1,0 +1,30 @@
+{
+  "name": "chat-ax-authority-test",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [],
+  "main": "dist/chat_ax/index.js",
+  "ai": { "binding": "AI" },
+  "compatibility_date": "2026-04-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "no_bundle": true,
+  "rules": [{ "type": "ESModule", "globs": ["**/*.js"] }],
+  "assets": { "directory": "dist/client" },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ROOM", "class_name": "ChatRoomDO" },
+      { "name": "CONNECTOR_VAULT", "class_name": "ConnectorVaultDO" },
+      { "name": "AGENT", "class_name": "AgentDO" }
+    ]
+  },
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "chat-ax-files" }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["ChatRoomDO", "ConnectorVaultDO", "AgentDO"] }
+  ],
+  "vars": {
+    "ENVIRONMENT": "dev",
+    "MINIFLARE": "1",
+    "DEV_USER_EMAIL": "authority-e2e@example.com",
+    "DEV_USER_NAME": "Authority E2E"
+  }
+}

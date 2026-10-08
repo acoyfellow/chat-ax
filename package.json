@@ -1,0 +1,74 @@
+{
+  "name": "chat-ax",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node build.mjs && vite dev",
+    "build": "node build.mjs && vite build && node scripts/remove-built-secrets.mjs",
+    "deploy": "node scripts/setup.mjs",
+    "setup": "node scripts/setup.mjs",
+    "test": "bun test src",
+    "test:e2e": "node scripts/e2e-fleet-drag.mjs --base-url http://127.0.0.1:8787",
+    "dev:test": "npm run build && wrangler dev --config wrangler.test.jsonc --port 8787",
+    "typecheck": "node build.mjs && tsc --noEmit --noCheck false",
+    "format": "biome format --write .",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@earendil-works/chord": "^1.0.0",
+    "@earendil-works/pi-ai": "^1.0.0",
+    "@earendil-works/pi-durable": "^1.0.0",
+    "@flue/runtime": "^2.0.3",
+    "@lucide/svelte": "^1.39.0",
+    "d3-force": "^3.0.0",
+    "hono": "^4.6.14",
+    "jose": "^5.9.6",
+    "marked": "^16.4.2",
+    "svelte": "^5.57.0",
+    "svelte-hono": "^0.1.2",
+    "typebox": "^1.3.7",
+    "valibot": "^1.3.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@babel/parser": "^7.29.9",
+    "@biomejs/biome": "^1.9.4",
+    "@cloudflare/vite-plugin": "^1.54.3",
+    "@cloudflare/workers-types": "^5.20260905.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@types/d3-force": "^3.0.10",
+    "bun": "^1.4.2",
+    "cf": "^1.0.0-beta.12",
+    "esbuild": "^0.28.1",
+    "playwright-core": "^1.61.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "wrangler": "^4.128.0"
+  },
+  "description": "A shared team chat where everyone talks to one durable AI agent fleet. Runs entirely on your Cloudflare account.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/acoyfellow/chat-ax"
+  },
+  "cloudflare": {
+    "bindings": {
+      "AI": {
+        "description": "Runs the agents. Models are served by **Workers AI** and **AI Gateway** on your own account; no outside API keys are needed."
+      },
+      "FILES": {
+        "description": "Stores files people attach in chat. Keep the default name unless it clashes with an existing bucket."
+      },
+      "WORKER_NAME": {
+        "description": "Keep this equal to the Worker name above. The first-run setup page uses it to link you to the right dashboard page."
+      },
+      "AI_GATEWAY_ID": {
+        "description": "Keep `default`. Cloudflare creates the default **AI Gateway** automatically on the first request, giving you logs and spend controls."
+      }
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
