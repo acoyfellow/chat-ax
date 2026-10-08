@@ -1,7 +1,11 @@
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
 import { DurableObject } from 'cloudflare:workers';
-import { fauxAssistantMessage, fauxProvider, fauxToolCall } from '@earendil-works/pi-ai/providers/faux';
+import {
+  fauxAssistantMessage,
+  fauxProvider,
+  fauxToolCall,
+} from '@earendil-works/pi-ai/providers/faux';
 import { createModels } from '@earendil-works/pi-ai/models';
 import type { Provider } from '@earendil-works/pi-ai';
 import { chatGatewayProvider } from './chat-model-provider';
@@ -108,7 +112,15 @@ import {
 import { resolveTurnAuthority } from './turn-authority';
 import { universalMcpTool } from './universal-mcp';
 import { sendWebPush } from './web-push';
-import { encodeFrame, isWebSocketUpgrade, parseAttachment, parseCursor, type SubscriberAttachment, subscriberExpired, subscriberSees } from './live-socket';
+import {
+  encodeFrame,
+  isWebSocketUpgrade,
+  parseAttachment,
+  parseCursor,
+  type SubscriberAttachment,
+  subscriberExpired,
+  subscriberSees,
+} from './live-socket';
 
 export type FleetEvent = {
   cursor: number;
@@ -125,6 +137,26 @@ export type FleetEvent = {
 
 type ExpiringFleetEvent = { event: FleetEvent; expiresAt: number };
 type AgentDeletionResult = { agentIds: string[]; expiresAt: number };
+const fleetOperationsCacheMilliseconds = 1_000;
+type FleetOperationsSnapshot = {
+  agents: Array<{
+    id: string;
+    parentId: string | null;
+    title: string;
+    avatarSeed?: string;
+    status: string;
+    context: { used: number; capacity: number; ratio: number };
+    queued: number;
+  }>;
+  events: Array<{
+    id: string;
+    type: string;
+    fromAgentId: string;
+    toAgentId: string;
+    action: string;
+    occurredAt: string;
+  }>;
+};
 type AgentDeletionTrace = {
   id: string;
   title: string;
@@ -305,7 +337,7 @@ const updatePersonRequestSchema = v.object({
 const acceptedReviewInstruction = (resourceUrl: string) =>
   [
     `Perform the accepted read-only review of ${resourceUrl} using my connector.`,
-    'Use the speaker\'s MCP connector tools to read the change. Fetch the changed-file manifest first, then fetch diffs in bounded pages or per-file batches so every reported change is accounted for without truncating one large response. Fetch discussions, authoritative approval fields or endpoint data, the pipeline, and relevant CI evidence.',
+    "Use the speaker's MCP connector tools to read the change. Fetch the changed-file manifest first, then fetch diffs in bounded pages or per-file batches so every reported change is accounted for without truncating one large response. Fetch discussions, authoritative approval fields or endpoint data, the pipeline, and relevant CI evidence.",
     'Activate the mounted reviews-todo room skill before gathering evidence. After fetching the current change, discussion, and authoritative approval data, call the mounted review_this_mr tool and include its version 3 digest receipt.',
     'Return the exact head SHA and base SHA, pipeline status, validations actually observed, and findings with file paths and changed-line citations. If any required evidence or execution capability is unavailable, say BLOCKED and name it. Do not post comments, approve, merge, or modify the code host.',
   ].join('\n');
@@ -326,12 +358,16 @@ const personRequestActionSchema = v.picklist([
 ]);
 
 const fleetCoordinateSchema = z.number().finite().min(-10_000).max(10_000);
-const fleetLayoutUpdateSchema = z.object({
-  positions: z.record(z.string().min(1).max(200), z.object({ x: fleetCoordinateSchema, y: fleetCoordinateSchema }).strict()).refine(
-    (positions) => Object.keys(positions).length <= 500,
-    'Too many positions',
-  ),
-}).strict();
+const fleetLayoutUpdateSchema = z
+  .object({
+    positions: z
+      .record(
+        z.string().min(1).max(200),
+        z.object({ x: fleetCoordinateSchema, y: fleetCoordinateSchema }).strict(),
+      )
+      .refine((positions) => Object.keys(positions).length <= 500, 'Too many positions'),
+  })
+  .strict();
 type FleetLayout = z.infer<typeof fleetLayoutUpdateSchema>;
 
 const roomWorkersAIModels = [
@@ -342,10 +378,15 @@ const roomWorkersAIModels = [
 
 function roomGatewayProviders(env: RoomEnv): Provider[] {
   const gateway = aiGatewayId(env);
-  return [workersAI(env.AI, { gateway: workersAIGatewayId(env), models: roomWorkersAIModels }), chatGatewayProvider(env.AI, gateway)];
+  return [
+    workersAI(env.AI, { gateway: workersAIGatewayId(env), models: roomWorkersAIModels }),
+    chatGatewayProvider(env.AI, gateway),
+  ];
 }
 
-const piActivateSkillParameters = Type.Object({ name: Type.String({ minLength: 1, maxLength: 64 }) });
+const piActivateSkillParameters = Type.Object({
+  name: Type.String({ minLength: 1, maxLength: 64 }),
+});
 
 const piPreviewParameters = Type.Object({
   text: Type.String({ minLength: 1, maxLength: 4_000 }),
@@ -417,7 +458,10 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         createdBy: v.optional(v.string()),
         updatedBy: v.optional(v.string()),
       });
-      const parsed = v.safeParse(actorFields, await readBoundedJson(cloneRequest(request)).catch(() => ({})));
+      const parsed = v.safeParse(
+        actorFields,
+        await readBoundedJson(cloneRequest(request)).catch(() => ({})),
+      );
       const body = parsed.success ? parsed.output : {};
       actorId = body.actorId?.trim() || body.createdBy?.trim() || body.updatedBy?.trim() || '';
     }
@@ -436,7 +480,10 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
   constructor(state: DurableObjectState, env: RoomEnv) {
     super(state, env);
     this.state = state;
-    this.faux = env.ENVIRONMENT === 'dev' && env.LOCAL_AI_MODE !== 'remote' ? fauxProvider({ tokensPerSecond: 60, tokenSize: { min: 2, max: 5 } }) : null;
+    this.faux =
+      env.ENVIRONMENT === 'dev' && env.LOCAL_AI_MODE !== 'remote'
+        ? fauxProvider({ tokensPerSecond: 60, tokenSize: { min: 2, max: 5 } })
+        : null;
     const models = createModels();
     if (this.faux) models.setProvider(this.faux.provider);
     else for (const provider of roomGatewayProviders(env)) models.setProvider(provider);
@@ -562,7 +609,11 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
 
   private async diagnosePiTasks(): Promise<Response> {
     const snapshot = await this.pi.snapshot();
-    return Response.json({ active: snapshot.active, queued: snapshot.queued, messages: snapshot.messages.length });
+    return Response.json({
+      active: snapshot.active,
+      queued: snapshot.queued,
+      messages: snapshot.messages.length,
+    });
   }
 
   private progressFor(responseId: string): TurnProgress {
@@ -633,9 +684,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         description: 'Write the room preview text through the room workspace capability.',
         parameters: piPreviewParameters,
         replay: 'safe' as const,
-        execute: async (
-          input: { text: string },
-        ) => {
+        execute: async (input: { text: string }) => {
           const execution = await executeRoomPreview({
             storage: this.state.storage,
             actorId: 'room-agent',
@@ -657,9 +706,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         description: 'Create a reusable room skill the team can activate later.',
         parameters: piCreateSkillParameters,
         replay: 'safe' as const,
-        execute: async (
-          input: { name: string; description: string; body: string },
-        ) => {
+        execute: async (input: { name: string; description: string; body: string }) => {
           const execution = await executeRoomSkillWrite({
             storage: this.state.storage,
             actorId: 'room-agent',
@@ -684,9 +731,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         description: 'Edit an existing reusable room skill.',
         parameters: piEditSkillParameters,
         replay: 'safe' as const,
-        execute: async (
-          input: { name: string; description?: string; body?: string },
-        ) => {
+        execute: async (input: { name: string; description?: string; body?: string }) => {
           const execution = await executeRoomSkillWrite({
             storage: this.state.storage,
             actorId: 'room-agent',
@@ -711,9 +756,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         description: 'Delete a reusable room skill.',
         parameters: piDeleteSkillParameters,
         replay: 'safe' as const,
-        execute: async (
-          input: { name: string },
-        ) => {
+        execute: async (input: { name: string }) => {
           const execution = await executeRoomSkillWrite({
             storage: this.state.storage,
             actorId: 'room-agent',
@@ -1573,7 +1616,8 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       if (revocations.size - expired.length >= 2_000)
         return Response.json({ error: 'revocation capacity reached' }, { status: 429 });
       await this.state.storage.put(`agent-capability-revoked:${jti}`, { expiresAt });
-      for (const socket of this.state.getWebSockets(`capability:${jti}`)) this.closeSocket(socket, 4003, 'capability revoked');
+      for (const socket of this.state.getWebSockets(`capability:${jti}`))
+        this.closeSocket(socket, 4003, 'capability revoked');
       return Response.json({ revoked: true });
     }
     if (request.method === 'POST' && url.pathname.startsWith('/agent-capability/claim/')) {
@@ -1737,47 +1781,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     if (request.method === 'GET' && url.pathname === '/fleet')
       return Response.json({ agents: (await this.threadTree()).nodes });
     if (request.method === 'GET' && url.pathname === '/fleet/operations') {
-      const tree = await this.threadTree();
-      const agentIds = new Set(tree.nodes.map((node) => node.id));
-      const communicationEvents = [
-        ...(
-          await this.state.storage.list<CommunicationEvent>({ prefix: 'communication-event:' })
-        ).values(),
-      ]
-        .filter((event) => agentIds.has(event.fromAgentId) && agentIds.has(event.toAgentId))
-        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
-        .slice(0, 80)
-        .map(({ id, type, fromAgentId, toAgentId, action, occurredAt }) => ({
-          id,
-          type,
-          fromAgentId,
-          toAgentId,
-          action,
-          occurredAt,
-        }));
-      const agents = await Promise.all(
-        tree.nodes.map(async ({ id, parentId, title, avatarSeed, status }) => {
-          let operations = {
-            context: { used: 0, capacity: 128_000, ratio: 0 },
-            active: false,
-            queued: 0,
-          };
-          try {
-            const response = await this.agent(id).fetch('https://agent/operations');
-            if (response.ok) operations = await response.json<typeof operations>();
-          } catch {}
-          return {
-            id,
-            parentId,
-            title,
-            avatarSeed,
-            status: operations.active ? 'active' : status,
-            context: operations.context,
-            queued: operations.queued,
-          };
-        }),
-      );
-      return Response.json({ agents, events: communicationEvents });
+      return Response.json(await this.cachedFleetOperations());
     }
     if (url.pathname === '/fleet/layout') {
       if (request.method === 'GET')
@@ -1785,10 +1789,14 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       if (request.method === 'PUT')
         return this.serializeTreeMutation(async () => {
           const update = fleetLayoutUpdateSchema.parse(await readBoundedJson(request));
-          const stored = (await this.state.storage.get<FleetLayout>('fleet-layout')) ?? { positions: {} };
+          const stored = (await this.state.storage.get<FleetLayout>('fleet-layout')) ?? {
+            positions: {},
+          };
           const known = new Set((await this.threadTree()).nodes.map((node) => node.id));
           const positions = Object.fromEntries(
-            Object.entries({ ...stored.positions, ...update.positions }).filter(([id]) => known.has(id)),
+            Object.entries({ ...stored.positions, ...update.positions }).filter(([id]) =>
+              known.has(id),
+            ),
           );
           const layout: FleetLayout = { positions };
           await this.state.storage.put('fleet-layout', layout);
@@ -1796,7 +1804,8 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
           return Response.json(layout);
         });
     }
-    if (url.pathname === '/fleet-events' && isWebSocketUpgrade(request)) return this.acceptFleetSocket(url);
+    if (url.pathname === '/fleet-events' && isWebSocketUpgrade(request))
+      return this.acceptFleetSocket(url);
     if (request.method === 'GET' && url.pathname === '/fleet-receipts')
       return Response.json({
         receipts: [...(await this.state.storage.list({ prefix: 'fleet-receipt:' })).values()],
@@ -2314,6 +2323,67 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       });
   }
 
+  private fleetOperationsCache: {
+    expiresAt: number;
+    value: Promise<FleetOperationsSnapshot>;
+  } | null = null;
+
+  private cachedFleetOperations(): Promise<FleetOperationsSnapshot> {
+    const now = Date.now();
+    if (this.fleetOperationsCache && this.fleetOperationsCache.expiresAt > now)
+      return this.fleetOperationsCache.value;
+    const value = this.computeFleetOperations();
+    this.fleetOperationsCache = { expiresAt: now + fleetOperationsCacheMilliseconds, value };
+    value.catch(() => {
+      if (this.fleetOperationsCache?.value === value) this.fleetOperationsCache = null;
+    });
+    return value;
+  }
+
+  private async computeFleetOperations(): Promise<FleetOperationsSnapshot> {
+    const tree = await this.threadTree();
+    const agentIds = new Set(tree.nodes.map((node) => node.id));
+    const communicationEvents = [
+      ...(
+        await this.state.storage.list<CommunicationEvent>({ prefix: 'communication-event:' })
+      ).values(),
+    ]
+      .filter((event) => agentIds.has(event.fromAgentId) && agentIds.has(event.toAgentId))
+      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+      .slice(0, 80)
+      .map(({ id, type, fromAgentId, toAgentId, action, occurredAt }) => ({
+        id,
+        type,
+        fromAgentId,
+        toAgentId,
+        action,
+        occurredAt,
+      }));
+    const agents = await Promise.all(
+      tree.nodes.map(async ({ id, parentId, title, avatarSeed, status }) => {
+        let operations = {
+          context: { used: 0, capacity: 128_000, ratio: 0 },
+          active: false,
+          queued: 0,
+        };
+        try {
+          const response = await this.agent(id).fetch('https://agent/operations');
+          if (response.ok) operations = await response.json<typeof operations>();
+        } catch {}
+        return {
+          id,
+          parentId,
+          title,
+          avatarSeed,
+          status: operations.active ? 'active' : status,
+          context: operations.context,
+          queued: operations.queued,
+        };
+      }),
+    );
+    return { agents, events: communicationEvents };
+  }
+
   private async acceptFleetSocket(url: URL): Promise<Response> {
     const agentScope = url.searchParams.get('agent') ?? '';
     if (!agentScope) return Response.json({ error: 'agent scope required' }, { status: 400 });
@@ -2326,12 +2396,16 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     const after = parseCursor(url.searchParams.get('after'), latest);
     const pair = new WebSocketPair();
     const capabilityId = url.searchParams.get('capability');
-    this.state.acceptWebSocket(pair[1], capabilityId ? ['fleet', `capability:${capabilityId}`] : ['fleet']);
+    this.state.acceptWebSocket(
+      pair[1],
+      capabilityId ? ['fleet', `capability:${capabilityId}`] : ['fleet'],
+    );
     pair[1].serializeAttachment(attachment);
     pair[1].send(encodeFrame({ type: 'ready', cursor: latest }));
     const lineage = await this.fleetLineage();
     for (const event of await this.fleetEventsAfter(after, latest))
-      if (subscriberSees(attachment, event, lineage)) pair[1].send(encodeFrame({ type: 'fleet', event }));
+      if (subscriberSees(attachment, event, lineage))
+        pair[1].send(encodeFrame({ type: 'fleet', event }));
     if (attachment.expiresAt) await this.scheduleSocketExpiry(attachment.expiresAt);
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
@@ -2381,8 +2455,10 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     let nextExpiry: number | null = null;
     for (const socket of this.state.getWebSockets('fleet')) {
       const attachment = parseAttachment(socket.deserializeAttachment());
-      if (!attachment || subscriberExpired(attachment, now)) this.closeSocket(socket, 4001, 'subscription expired');
-      else if (attachment.expiresAt !== null) nextExpiry = Math.min(nextExpiry ?? attachment.expiresAt, attachment.expiresAt);
+      if (!attachment || subscriberExpired(attachment, now))
+        this.closeSocket(socket, 4001, 'subscription expired');
+      else if (attachment.expiresAt !== null)
+        nextExpiry = Math.min(nextExpiry ?? attachment.expiresAt, attachment.expiresAt);
     }
     return nextExpiry;
   }
@@ -3053,12 +3129,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       }
       console.log('chat-ax pi prompt start', message.id);
       const reply = await this.pi.prompt(prompt, { operationId: message.id });
-      console.log(
-        'chat-ax pi prompt end',
-        message.id,
-        reply.status,
-        reply.error ?? '',
-      );
+      console.log('chat-ax pi prompt end', message.id, reply.status, reply.error ?? '');
       const completedText = reply.status === 'completed' ? reply.text : '';
       return {
         message,
@@ -3681,7 +3752,9 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       .filter((time) => Number.isFinite(time))
       .sort((left, right) => left - right)[0];
     const socketExpiry = this.closeExpiredSockets(Date.now());
-    const earliest = [next, socketExpiry ?? undefined].filter((time): time is number => time !== undefined).sort((left, right) => left - right)[0];
+    const earliest = [next, socketExpiry ?? undefined]
+      .filter((time): time is number => time !== undefined)
+      .sort((left, right) => left - right)[0];
     if (earliest === undefined) {
       await this.state.storage.deleteAlarm();
       return;
@@ -3918,11 +3991,12 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     );
     return {
       strategyId: stored?.strategyId ?? 'fifo',
-      modelId: currentChatModelId(stored?.modelId ?? '') ?? deploymentDefaultModelId(this.env.DEFAULT_MODEL),
-      thinkingLevel:
-        currentChatModelId(stored?.modelId ?? '')
-          ? (stored?.thinkingLevel ?? defaultThinkingLevel)
-          : defaultThinkingLevel,
+      modelId:
+        currentChatModelId(stored?.modelId ?? '') ??
+        deploymentDefaultModelId(this.env.DEFAULT_MODEL),
+      thinkingLevel: currentChatModelId(stored?.modelId ?? '')
+        ? (stored?.thinkingLevel ?? defaultThinkingLevel)
+        : defaultThinkingLevel,
       systemPrompt: normalizeSystemPrompt(stored?.systemPrompt ?? '') ?? defaultSystemPrompt,
       agentAvatarSeed: stored?.agentAvatarSeed?.trim() || 'AX shared agent',
       version: stored?.version ?? 0,
@@ -4036,7 +4110,8 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
           : applyPersonRequestAction(current, actor, action, value.response);
         if (action === 'accept' && !updated.runMessageId) {
           const resourceUrl =
-            updated.resourceUrl ?? updated.details.match(/https?:\/\/[^\s>]+/)?.[0]?.replace(/[.,;:!?]+$/, '');
+            updated.resourceUrl ??
+            updated.details.match(/https?:\/\/[^\s>]+/)?.[0]?.replace(/[.,;:!?]+$/, '');
           if (updated.agentId && resourceUrl) {
             acceptedAgentReview = {
               agentId: updated.agentId,

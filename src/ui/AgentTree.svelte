@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ArrowRight, ChevronDown, ChevronUp, ExternalLink, Maximize2, Minus, Move, Plus, X } from '@lucide/svelte';
-  import { openLiveConnection } from './live-connection';
+  import { coalescedTask, openLiveConnection } from './live-connection';
   import { onMount } from 'svelte';
   import type { FleetOperationsAgent, FleetOperationsEvent } from '../fleet-operations';
   import { createFleetLayout } from '../fleet-operations';
@@ -366,11 +366,12 @@
     void refresh().catch(() => {
       mapReady = true;
     });
+    const scheduleRefresh = coalescedTask(refresh);
     const fleetEvents = openLiveConnection({
       path: () => '/api/fleet/events?after=latest',
-      onOpen: () => void refresh().catch(() => undefined),
+      onOpen: scheduleRefresh,
       onMessage: (message) => {
-        if (message.type === 'fleet') void refresh().catch(() => undefined);
+        if (message.type === 'fleet') scheduleRefresh();
       },
     });
     const desktopQuery = window.matchMedia('(min-width: 721px)');

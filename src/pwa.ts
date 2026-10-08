@@ -39,7 +39,7 @@ export function pwaHead(): string {
     '<meta name="apple-mobile-web-app-capable" content="yes">',
     '<meta name="apple-mobile-web-app-status-bar-style" content="default">',
     '<meta name="apple-mobile-web-app-title" content="Chat AX">',
-    '<link rel="manifest" href="/manifest.webmanifest">',
+    '<link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials">',
     `<link rel="icon" type="image/png" sizes="32x32" href="${favicon32}">`,
     `<link rel="icon" type="image/png" sizes="16x16" href="${favicon16}">`,
     `<link rel="apple-touch-icon" href="${appleTouch}">`,

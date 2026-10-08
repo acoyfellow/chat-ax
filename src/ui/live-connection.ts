@@ -97,3 +97,26 @@ export function openLiveConnection(options: LiveConnectionOptions): LiveConnecti
     },
   };
 }
+
+export function coalescedTask(task: () => Promise<void>): () => void {
+  let running = false;
+  let rerun = false;
+  const drain = async () => {
+    running = true;
+    try {
+      do {
+        rerun = false;
+        await task().catch(() => undefined);
+      } while (rerun);
+    } finally {
+      running = false;
+    }
+  };
+  return () => {
+    if (running) {
+      rerun = true;
+      return;
+    }
+    void drain();
+  };
+}

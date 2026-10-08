@@ -7,7 +7,7 @@
   import AgentAvatar from './AgentAvatar.svelte';
   import AgentTree from './AgentTree.svelte';
   import Modal from './Modal.svelte';
-  import { openLiveConnection } from './live-connection';
+  import { coalescedTask, openLiveConnection } from './live-connection';
 
   const markdownRenderer = new Renderer();
   const escapeMarkup = (value) =>
@@ -214,7 +214,7 @@
       if (!response.ok) return;
       const result = await response.json();
       treeNodes = result.agents;
-      if (treeNodes.some((node) => node.id === threadLens.current.id)) await loadThreadLens(threadLens.current.id);
+      if (!treeNodes.some((node) => node.id === threadLens.current.id) && !threadLoading) await loadThreadLens();
     } catch {}
   }
 
@@ -324,15 +324,7 @@
     });
   }
 
-  let liveRefreshQueued = false;
-  function refreshFromLiveSignal() {
-    if (liveRefreshQueued) return;
-    liveRefreshQueued = true;
-    queueMicrotask(async () => {
-      liveRefreshQueued = false;
-      await refresh();
-    });
-  }
+  const refreshFromLiveSignal = coalescedTask(() => refresh());
 
   let liveReconnect = () => {};
   let snapshotEtag = '';
@@ -595,10 +587,11 @@
       stressMode = true;
       window.setTimeout(() => scrollLatest('smooth'), 0);
     }
+    const scheduleFleetRefresh = coalescedTask(refreshFleet);
     const fleetEvents = stressMode ? null : openLiveConnection({
       path: () => '/api/fleet/events?after=latest',
       onMessage: (message) => {
-        if (message.type === 'fleet') void refreshFleet();
+        if (message.type === 'fleet') scheduleFleetRefresh();
       },
     });
     const agentLive = stressMode ? null : openLiveConnection({
