@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_4f3d73861137de::t_cd5e6f8da6247e 21
+package.json
+  s_4f3d73861137de::t_70ee14d3438e13 13
+scripts/e2e-mcp-realtime-authority.mjs
+  s_4f3d73861137de::t_9914b4c9ce8eb5 7-8
+wrangler.test.jsonc
+  s_4f3d73861137de::t_7f6e37be90d9df 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e2d1d74360e03614d75406cebb1d3100396abdc4",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
