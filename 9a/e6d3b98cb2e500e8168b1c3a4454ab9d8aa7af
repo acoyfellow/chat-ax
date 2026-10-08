@@ -1,0 +1,30 @@
+scripts/e2e-fleet-load.mjs
+  s_4f3d73861137de::t_929b848d636943 1-81
+  s_4f3d73861137de::t_a30814ff5aa81f 82-91
+src/pwa.ts
+  s_4f3d73861137de::t_c288e3c07d24a2 42
+src/room.ts
+  s_4f3d73861137de::t_c72d2dcdd9c5a3 140-159,1784,2326-2386
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_2698f1037284e4 3,369,372,374
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_61051d71f1d9d6 10,217,327,590,594
+src/ui/live-connection.ts
+  s_4f3d73861137de::t_2a844a668ed863 100-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9ae6d3b98cb2e500e8168b1c3a4454ab9d8aa7af",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
