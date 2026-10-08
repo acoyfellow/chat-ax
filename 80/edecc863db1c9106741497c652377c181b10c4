@@ -1,0 +1,29 @@
+scripts/e2e-fleet-load.mjs
+  s_4f3d73861137de::t_708fda834aa756 1-91
+src/pwa.ts
+  s_4f3d73861137de::t_bf96da052f9ef9 42
+src/room.ts
+  s_4f3d73861137de::t_1864c1361dcc2e 4-8,115-123,140-159,340,361-370,381-384,387-389,461-464,483-486,612-616,687,709,734,759,1619-1620,1784,1792-1794,1797-1799,1807-1808,2326-2386,2399-2402,2407-2408,2458-2461,3132,3755-3757,3994-3999,4113-4114
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_469608708cff15 3,369,372,374
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_383ac129355e33 10,217,327,590,594
+src/ui/live-connection.ts
+  s_4f3d73861137de::t_67b9cfac9f9a90 100-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "80edecc863db1c9106741497c652377c181b10c4",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}
