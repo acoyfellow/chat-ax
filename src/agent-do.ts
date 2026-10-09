@@ -1432,11 +1432,21 @@ export class AgentDO extends DurableObject<AgentEnv> {
   }
 
   private ensureDrain(): void {
-    if (this.drainPromise) return;
-    this.drainPromise = this.drain().finally(() => {
-      this.drainPromise = null;
-    });
-    this.ctx.waitUntil(this.drainPromise);
+    this.ctx.waitUntil(this.armDrainAlarm());
+  }
+
+  private async armDrainAlarm(): Promise<void> {
+    const current = await this.ctx.storage.getAlarm();
+    const now = Date.now();
+    if (current === null || current > now) await this.ctx.storage.setAlarm(now);
+  }
+
+  private runDrain(): Promise<void> {
+    if (!this.drainPromise)
+      this.drainPromise = this.drain().finally(() => {
+        this.drainPromise = null;
+      });
+    return this.drainPromise;
   }
 
   private async drain(): Promise<void> {
@@ -1862,15 +1872,18 @@ export class AgentDO extends DurableObject<AgentEnv> {
 
   private async scheduleJobs(): Promise<void> {
     const jobs = (await this.ctx.storage.get<RecurringJob[]>('resource:jobs')) ?? [];
-    const times = jobs.flatMap((job) =>
-      job.status === 'active' && job.nextRunAt ? [Date.parse(job.nextRunAt)] : [],
-    );
+    const pendingTurns = ((await this.ctx.storage.get<string[]>('message-queue')) ?? []).length > 0;
+    const times = [
+      ...jobs.flatMap((job) => (job.status === 'active' && job.nextRunAt ? [Date.parse(job.nextRunAt)] : [])),
+      ...(pendingTurns ? [Date.now()] : []),
+    ];
     if (times.length) await this.ctx.storage.setAlarm(Math.min(...times));
     else await this.ctx.storage.deleteAlarm();
   }
 
   async onAlarm(): Promise<void> {
-    return this.nativeResourceLane.run(() => this.runAlarm());
+    await this.nativeResourceLane.run(() => this.runAlarm());
+    if (((await this.ctx.storage.get<string[]>('message-queue')) ?? []).length) await this.runDrain();
   }
 
   private async runAlarm(): Promise<void> {
@@ -1928,7 +1941,6 @@ export class AgentDO extends DurableObject<AgentEnv> {
         };
       }),
     );
-    this.ensureDrain();
     await this.scheduleJobs();
   }
 

@@ -25,7 +25,7 @@ function watch(path) {
 
 const { agents } = await tool('list_agents', {});
 const from = process.env.FROM_AGENT ?? agents.find((agent) => agent.parentId === null).id;
-const to = process.env.TO_AGENT ?? agents.find((agent) => agent.parentId === from)?.id ?? (await tool('create_agent', { parentId: from })).id;
+const to = process.env.TO_AGENT ?? agents.find((agent) => agent.parentId === from)?.id ?? (await tool('create_agent', { parentId: from })).agent.id;
 const marker = `handoff-${Date.now()}`;
 const fleet = watch('/api/fleet/events?after=latest');
 const receiver = watch(`/api/agents/${encodeURIComponent(to)}/live`);
