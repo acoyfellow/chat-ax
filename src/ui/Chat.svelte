@@ -22,7 +22,7 @@
   markdownRenderer.image = (token) => escapeMarkup(token.text);
   marked.setOptions({ gfm: true, breaks: true, renderer: markdownRenderer });
 
-  let { initialState, viewer, connector, stressFixture = false, threadId = '', threadTitle = 'Thread lens', threadPath = 'Thread lens' } = $props();
+  let { initialState, viewer, connector, stressFixture = false, threadId = '', threadTitle = 'Thread lens', threadPath = 'Thread lens', scripted = null } = $props();
   const initialThreadId = untrack(() => threadId || initialState.threadTree?.rootId || '');
   const initialThreadNodes = untrack(() => initialState.threadTree?.nodes ?? []);
   let treeNodes = $state(initialThreadNodes);
@@ -62,7 +62,18 @@
   let pushEnabled = $state(false);
   let editingSettings = $state(false);
   let mounted = $state(false);
-  let stressMode = $state(untrack(() => stressFixture));
+  let stressMode = $state(untrack(() => stressFixture || Boolean(scripted)));
+  $effect(() => {
+    if (!scripted) return;
+    state = scripted.state;
+    settingsOpen = scripted.paletteOpen ?? false;
+    paletteTab = scripted.paletteTab ?? 'account';
+    if (scripted.theme) {
+      theme = scripted.theme;
+      document.documentElement.dataset.theme = scripted.theme;
+    }
+    if (scripted.followLatest) window.requestAnimationFrame(() => scrollLatest('instant'));
+  });
   let now = $state(Date.now());
   let systemPromptDraft = $state(untrack(() => initialState.settings.systemPrompt));
   let skillName = $state('');
@@ -154,6 +165,7 @@
     approvingApprovalId = id;
     try {
       await mutate('POST', `/api/mcp-approvals/${id}/approve`, {});
+      await refresh(true);
     } finally {
       approvingApprovalId = '';
     }
@@ -164,6 +176,7 @@
     approvingApprovalId = id;
     try {
       await mutate('POST', `/api/mcp-approvals/${id}/deny`, {});
+      await refresh(true);
     } finally {
       approvingApprovalId = '';
     }
@@ -285,7 +298,26 @@
     await openThread(result.node.id);
   }
 
+  const announcedNotificationIds = new Set(untrack(() => (initialState.notifications ?? []).map((notification) => notification.id)));
+
+  async function announceNotifications(notifications) {
+    const fresh = notifications.filter((notification) => notification.recipientEmail === viewer.email && !announcedNotificationIds.has(notification.id));
+    for (const notification of fresh) announcedNotificationIds.add(notification.id);
+    if (!fresh.length || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const registration = await navigator.serviceWorker?.getRegistration();
+    for (const notification of fresh) {
+      const requestId = notification.href.match(/[?&]request=([^&]+)/)?.[1];
+      const approvalId = notification.approvalId;
+      const decidable = Boolean(requestId || approvalId);
+      const options = { body: notification.body, tag: approvalId ?? requestId ?? notification.id, data: { href: notification.href, notificationId: notification.id, requestId: requestId && decodeURIComponent(requestId), approvalId, agentId: notification.agentId }, requireInteraction: decidable };
+      const actions = approvalId ? [{ action: 'approve', title: 'Approve' }, { action: 'deny', title: 'Deny' }] : requestId ? [{ action: 'accept', title: 'Accept' }, { action: 'decline', title: 'Decline' }] : [];
+      if (registration) await registration.showNotification(notification.title, { ...options, actions });
+      else new Notification(notification.title, options);
+    }
+  }
+
   function applySnapshot(next, force = false) {
+    void announceNotifications(next.notifications ?? []).catch(() => {});
     const previousCount = state.messages.length;
     if (!editingSettings || force) systemPromptDraft = next.settings.systemPrompt;
     state = editingSettings && !force
@@ -569,8 +601,8 @@
   }
 
   onMount(() => {
-    theme = localStorage.getItem('chat-ax-theme') === 'dark' ? 'dark' : 'light';
-    personalAvatarSeed = localStorage.getItem(`chat-ax-avatar-${viewer.id}`) || viewer.id;
+    theme = scripted?.theme ?? (localStorage.getItem('chat-ax-theme') === 'dark' ? 'dark' : 'light');
+    personalAvatarSeed = scripted ? viewer.id : localStorage.getItem(`chat-ax-avatar-${viewer.id}`) || viewer.id;
     document.documentElement.dataset.theme = theme;
     mounted = true;
     threadLensTitle = threadPath || threadTitle;
@@ -587,6 +619,29 @@
       stressMode = true;
       window.setTimeout(() => scrollLatest('smooth'), 0);
     }
+    const focusRequest = (requestId) => {
+      const request = state.personRequests?.find((candidate) => candidate.id === requestId);
+      if (request?.agentId && request.agentId !== threadLens.current.id) void openThread(request.agentId);
+      window.setTimeout(() => {
+        const card = document.querySelector(`[data-request-id="${CSS.escape(requestId)}"]`);
+        card?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        card?.classList.add('spotlight');
+      }, 400);
+    };
+    const requestedId = new URLSearchParams(location.search).get('request');
+    if (requestedId) focusRequest(requestedId);
+    const focusApproval = (approvalId) => window.setTimeout(() => {
+      const card = document.querySelector(`[data-approval-id="${CSS.escape(approvalId)}"]`);
+      card?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      card?.classList.add('spotlight');
+    }, 600);
+    const requestedApproval = new URLSearchParams(location.search).get('approval');
+    if (requestedApproval) focusApproval(requestedApproval);
+    const onWorkerMessage = (event) => {
+      if (event.data?.type === 'open-request' && typeof event.data.requestId === 'string') void refresh(true).then(() => focusRequest(event.data.requestId));
+      if (event.data?.type === 'open-request' && typeof event.data.approvalId === 'string') void refresh(true).then(() => focusApproval(event.data.approvalId));
+    };
+    navigator.serviceWorker?.addEventListener('message', onWorkerMessage);
     const scheduleFleetRefresh = coalescedTask(refreshFleet);
     const fleetEvents = stressMode ? null : openLiveConnection({
       path: () => '/api/fleet/events?after=latest',
@@ -627,7 +682,7 @@
     window.addEventListener('pagehide', leaveRoom);
     document.addEventListener('visibilitychange', onVisibilityChange);
     heartbeat();
-    navigator.serviceWorker
+    if (!scripted) navigator.serviceWorker
       ?.getRegistration()
       .then((registration) => registration?.pushManager?.getSubscription())
       .then(async (subscription) => {
@@ -659,8 +714,9 @@
     window.addEventListener('popstate', onPopState);
     treeOpen = new URLSearchParams(location.search).has('fleet');
     refresh();
-    loadThreadLens(new URLSearchParams(location.search).get('thread') || '');
+    if (!stressMode) loadThreadLens(new URLSearchParams(location.search).get('thread') || '');
     return () => {
+      navigator.serviceWorker?.removeEventListener('message', onWorkerMessage);
       fleetEvents?.close();
       agentLive?.close();
       window.clearTimeout(refreshTimer);
@@ -704,7 +760,7 @@
   <header>
     <button class="agent-orchestrator-button" type="button" aria-label="Open agent fleet" onclick={() => (treeOpen = true)}><AgentAvatar hash={threadLens.current.avatarSeed || state.settings.agentAvatarSeed} size={36} /></button>
     <button class="agent-name-title" type="button" ondblclick={beginAgentRename}>{threadLens.current.title}</button>
-    {#if stressMode}<div class="stress-badge">{state.messages.length} fixture messages · {state.strategies.length} strategies</div>{/if}
+    {#if stressMode && !scripted}<div class="stress-badge">{state.messages.length} fixture messages · {state.strategies.length} strategies</div>{/if}
 
     <div class="presence" role="status" aria-label={`${onlineParticipants().length} people online`}>
       <div class="presence-stack">
@@ -851,15 +907,11 @@
               </section>
             {/each}
             {#each state.mcpApprovals ?? [] as approval (approval.id)}
-              {#if approval.operationId === message.id}
-                <section aria-label="Connector action approval">
+              {#if message.id === `mcp-requested:${approval.id}`}
+                <section class="connector-approval" aria-label="Connector action approval" data-approval-id={approval.id}>
                   <strong>{approval.toolName}</strong>
                   <pre>{approval.argumentsJson}</pre>
-                  <p>Requester: {approval.requesterEmail}. Connector owner: {approval.connectorOwnerEmail}. Approver: {approval.connectorOwnerEmail}.</p>
-                  <p>Status: {approvalStatusLabel(approval.status)}. The result will be shared with everyone in this workspace.</p>
-                  {#if approval.actorId !== viewer.id && approval.status === 'pending'}
-                    <p role="status">Waiting for {approval.connectorOwnerEmail} to approve.</p>
-                  {/if}
+                  <p>Status: {approvalStatusLabel(approval.status)}. Runs once, as {approval.connectorOwnerEmail}. Everyone here sees the result.</p>
                   {#if approval.status === 'outcome-unknown'}
                     <p>The action may already have happened. Do not repeat it. Check the external service before requesting another action.</p>
                   {:else if approval.status === 'not-executed'}
@@ -869,7 +921,7 @@
                   {/if}
                   {#if approval.status === 'pending' && approval.actorId === viewer.id}
                     <div class="approval-actions">
-                      <button type="button" disabled={approvingApprovalId === approval.id} aria-label="Approve connector action" onclick={() => safely(() => approveMcpAction(approval.id))}>{approvingApprovalId === approval.id ? 'Working…' : `Allow ${approval.requesterEmail} to run this with my connector`}</button>
+                      <button type="button" disabled={approvingApprovalId === approval.id} aria-label="Approve connector action" onclick={() => safely(() => approveMcpAction(approval.id))}>{approvingApprovalId === approval.id ? 'Working…' : 'Approve'}</button>
                       <button type="button" class="quiet danger" disabled={approvingApprovalId === approval.id} aria-label="Deny connector action" onclick={() => safely(() => denyMcpAction(approval.id))}>Deny</button>
                     </div>
                   {:else if approval.status === 'running' || approvingApprovalId === approval.id}
@@ -901,7 +953,7 @@
 
   <footer>
     <form onsubmit={(event) => { event.preventDefault(); send(); }}>
-      <textarea aria-label="Message the agent" placeholder={stressMode ? 'UI stress fixture — messages are not sent' : 'Message the agent'} bind:value={draft} onkeydown={keydown} rows="3" disabled={stressMode}></textarea>
+      <textarea aria-label="Message the agent" placeholder={stressMode && !scripted ? 'UI stress fixture — messages are not sent' : 'Message the agent'} bind:value={draft} onkeydown={keydown} rows="3" disabled={stressMode}></textarea>
       {#if selectedAttachmentIds.length}
         <div class="selected-files">
           {#each selectedAttachmentIds as fileId}
@@ -1256,6 +1308,8 @@
   .strategy-list { overflow-y: auto; padding: 0.75rem 1rem 1rem; }
   .palette-section { margin: 1rem 0 0.25rem; color: var(--text-secondary); font-size: 14px; font-weight: 600; }
   .history-actions, .approval-actions { display: flex; gap: 0.5rem; margin-top: 0.65rem; }
+  :global(.person-request.spotlight), :global(.connector-approval.spotlight) { outline: 2px solid var(--focus, #78b7ff); outline-offset: 4px; border-radius: 12px; animation: spotlight 1.6s ease-out 2; }
+  @keyframes spotlight { 50% { outline-color: transparent; } }
   fieldset { margin: 0; padding: 0.5rem 0; border: 0; }
   legend { padding: 0; color: var(--text-secondary); font-size: 14px; font-weight: 600; }
   select, input { width: 100%; margin-top: 0.35rem; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); padding: 0.65rem 0.75rem; color: var(--text); }

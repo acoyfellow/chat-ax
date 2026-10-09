@@ -23,7 +23,6 @@ import { type AgentDeletionPlan, runAgentDeletionProtocol } from './agent-deleti
 import {
   agentResourcesSchema,
   type AgentDO,
-  type AgentResources,
   type AgentSnapshot,
 } from './agent-do';
 import { agentObjectName } from './agent-identity';
@@ -31,7 +30,7 @@ import { type OrchestrationMode, switchMode } from './agent-orchestration-policy
 import { agentFileObjectKey } from './agent-private-resources';
 import { expiringRecordKeysToDelete } from './expiring-records';
 import { cloneRequest, parseBoundedJson, readBoundedJson } from './safe-json';
-import { callSpeakerMcpTool, listSpeakerMcpTools } from './mcp-connector-client';
+import { listSpeakerMcpTools } from './mcp-connector-client';
 import {
   type CapabilityReceipt,
   executeRoomPreview,
@@ -47,14 +46,11 @@ import {
   deploymentDefaultModelId,
   defaultSystemPrompt,
   defaultThinkingLevel,
-  isChatModelId,
-  isThinkingLevel,
   normalizeSystemPrompt,
   thinkingLevels,
 } from './chat-settings';
 import type { ConnectorVaultDO } from './connector-vault';
-import { type McpApproval, type PendingMcpAction, consumeMcpApproval } from './mcp-approval';
-import { type DurableMcpExecution, executeMcpOnce } from './mcp-execution';
+import type { PendingMcpAction } from './mcp-approval';
 import { type McpReceipt, recordMcpExecution } from './mcp-receipts';
 import { nativeAgentToolNames } from './native-agent-tools';
 import {
@@ -68,7 +64,7 @@ import {
   parseCreatePersonRequestInput,
 } from './person-requests';
 import { DurableTurnRuntime, type TurnInvocation, type TurnTool } from './pi/durable/turn-runtime';
-import { toolArgumentsDetail, toolResultDetail } from './tool-activity-detail';
+import { toolArgumentsDetail } from './tool-activity-detail';
 import { workersAI } from './pi/providers/workers-ai';
 import { type RoomParticipant, activeParticipants, touchParticipant } from './presence';
 import {
@@ -84,18 +80,12 @@ import {
   type RoomNotification,
   type SharedFile,
   type StoredPushSubscription,
-  maximumAgentStateEntries,
   maximumFileBytes,
-  maximumRecurringJobs,
   maximumSharedFiles,
-  normalizeJobInput,
-  normalizeStateKey,
-  normalizeStateValue,
 } from './shared-features';
 import {
   type Strategy,
   type StrategyId,
-  isStrategyId,
   planTurns,
   strategies,
   strategyById,
@@ -343,12 +333,6 @@ const acceptedReviewInstruction = (resourceUrl: string) =>
     'Return the exact head SHA and base SHA, pipeline status, validations actually observed, and findings with file paths and changed-line citations. If any required evidence or execution capability is unavailable, say BLOCKED and name it. Do not post comments, approve, merge, or modify the code host.',
   ].join('\n');
 
-const reviewRecipeProvenance = {
-  skill: 'reviews-todo',
-  recipe: 'review_this_mr',
-  recipeVersion: 3,
-  recipeDigest: '03db1a5252adb506b07adebbe3a216922851ac09d0dcda3930528844233028a5',
-} as const;
 
 const personRequestActionSchema = v.picklist([
   'accept',
@@ -413,17 +397,6 @@ const piReviewRecipeParameters = Type.Object({
     description:
       'JSON with reviewer and mergeRequest fields matching the trusted review_this_mr v3 input schema.',
   }),
-});
-const piCallMcpParameters = Type.Object({
-  name: Type.String({ minLength: 1, maxLength: 200 }),
-  argumentsJson: Type.Optional(Type.String({ maxLength: 8_000 })),
-  connectorOwnerEmail: Type.Optional(
-    Type.String({
-      maxLength: 320,
-      description:
-        "Email of the workspace participant whose connector should run this action. Omit to use the verified speaker's own connector.",
-    }),
-  ),
 });
 
 export class ChatRoomDO extends DurableObject<RoomEnv> {
@@ -842,187 +815,10 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
           return { content: [{ type: 'text', text: JSON.stringify(receipt) }], details: receipt };
         },
       },
-      {
-        name: 'call_mcp',
-        label: 'Call MCP tool',
-        description:
-          "Call one MCP connector tool. With no connectorOwnerEmail it runs immediately using the verified speaker's own connector. With another participant's email it only stages a delegated request that the connector owner must approve; it never uses another account without that approval.",
-        parameters: piCallMcpParameters,
-        replay: 'unsafe' as const,
-        execute: async (
-          input: { name: string; argumentsJson?: string; connectorOwnerEmail?: string },
-          invocation: TurnInvocation,
-        ) => {
-          const messages = await this.messages();
-          const authority = resolveTurnAuthority(messages, invocation.operationId);
-          let parsed: Record<string, unknown> = {};
-          if (input.argumentsJson?.trim()) {
-            parsed = z.record(z.string(), z.unknown()).parse(JSON.parse(input.argumentsJson));
-          }
-          const argumentsJson = JSON.stringify(parsed);
-          const ownerEmail =
-            input.connectorOwnerEmail?.trim().toLowerCase() || authority.actorEmail;
-          if (ownerEmail === authority.actorEmail) {
-            const text = await recordMcpExecution(
-              this.state.storage,
-              {
-                operationId: invocation.operationId,
-                invocationId: invocation.invocationId,
-                actorId: authority.actorId,
-                toolName: input.name,
-              },
-              () =>
-                callSpeakerMcpTool({
-                  namespace: this.env.CONNECTOR_VAULT,
-                  actorId: authority.actorId,
-                  env: this.env,
-                  name: input.name,
-                  arguments: parsed,
-                }),
-            );
-            return {
-              content: [{ type: 'text', text }],
-              details: { connectorOwnerEmail: ownerEmail },
-            };
-          }
-          const owner = messages.find(
-            (message) =>
-              message.role === 'user' &&
-              message.source === 'person' &&
-              message.authorEmail === ownerEmail,
-          );
-          if (!owner)
-            throw new Error(
-              `No workspace participant with email ${ownerEmail} has spoken in this room; delegated connector requests need the owner present.`,
-            );
-          const digest = await crypto.subtle.digest(
-            'SHA-256',
-            new TextEncoder().encode(argumentsJson),
-          );
-          const pending: PendingMcpAction = {
-            id: crypto.randomUUID(),
-            operationId: invocation.operationId,
-            actorId: owner.authorId,
-            requesterId: authority.actorId,
-            requesterEmail: authority.actorEmail,
-            connectorOwnerEmail: ownerEmail,
-            toolName: input.name,
-            argumentsJson,
-            argumentsDigest: Array.from(new Uint8Array(digest), (byte) =>
-              byte.toString(16).padStart(2, '0'),
-            ).join(''),
-            resultVisibility: 'room',
-            expiresAt: Date.now() + 15 * 60_000,
-            status: 'pending',
-          };
-          await this.state.storage.put(`mcp-pending:${pending.id}`, pending);
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Delegated request staged: ${authority.actorEmail} asked to run ${input.name} using ${ownerEmail}'s connector. Nothing has executed. ${ownerEmail} must approve it with the approval control; the result will then be shared with this workspace.`,
-              },
-            ],
-            details: {
-              approvalId: pending.id,
-              requesterEmail: authority.actorEmail,
-              connectorOwnerEmail: ownerEmail,
-            },
-          };
-        },
-      },
     ];
   }
 
-  private async approveMcpAction(request: Request, id: string): Promise<Response> {
-    const actor = this.actorFromUrl(request);
-    const pending = await this.state.storage.transaction(async (transaction) => {
-      const key = `mcp-pending:${id}`;
-      const action = await transaction.get<PendingMcpAction>(key);
-      if (!action || action.actorId !== actor.id || action.connectorOwnerEmail !== actor.email)
-        return undefined;
-      if (action.status !== 'pending' || action.expiresAt <= Date.now()) return undefined;
-      const authority = resolveTurnAuthority(
-        (await transaction.get<ChatMessage[]>('messages')) ?? [],
-        action.operationId,
-      );
-      if (authority.actorId !== action.requesterId) return undefined;
-      const grant: McpApproval = { ...action, approvedBy: actor.id };
-      await transaction.put(`mcp-approval:${id}`, consumeMcpApproval(grant, action, Date.now()));
-      await transaction.put(`mcp-execution:${id}`, {
-        status: 'not-executed',
-      } satisfies DurableMcpExecution);
-      await transaction.put(key, { ...action, status: 'not-executed' });
-      return action;
-    });
-    if (!pending)
-      return Response.json(
-        { error: 'Approval unavailable, expired, or already used' },
-        { status: 409 },
-      );
-    await this.state.storage.sync();
-    try {
-      const execution = await executeMcpOnce(this.state.storage, `mcp-execution:${id}`, () =>
-        recordMcpExecution(
-          this.state.storage,
-          {
-            operationId: pending.operationId,
-            invocationId: `approved:${id}`,
-            actorId: pending.actorId,
-            toolName: pending.toolName,
-          },
-          () =>
-            callSpeakerMcpTool({
-              namespace: this.env.CONNECTOR_VAULT,
-              actorId: pending.actorId,
-              env: this.env,
-              name: pending.toolName,
-              arguments: JSON.parse(pending.argumentsJson),
-            }),
-        ),
-      );
-      await this.recoverMcpResults();
-      return Response.json({ status: execution.status, messageId: `mcp-result:${id}` });
-    } catch {
-      return Response.json(
-        {
-          error:
-            'Action outcome may be unknown. Do not repeat the action; check its recorded status.',
-          approvalId: id,
-        },
-        { status: 502 },
-      );
-    }
-  }
 
-  private async denyMcpAction(request: Request, id: string): Promise<Response> {
-    const actor = this.actorFromUrl(request);
-    const denied = await this.state.storage.transaction(async (transaction) => {
-      const key = `mcp-pending:${id}`;
-      const action = await transaction.get<PendingMcpAction>(key);
-      if (!action || action.actorId !== actor.id || action.connectorOwnerEmail !== actor.email)
-        return undefined;
-      if (action.status !== 'pending') return undefined;
-      const updated: PendingMcpAction = { ...action, status: 'denied' };
-      await transaction.put(key, updated);
-      const messages = (await transaction.get<ChatMessage[]>('messages')) ?? [];
-      messages.push({
-        id: `mcp-denied:${id}`,
-        role: 'assistant',
-        authorId: 'room-agent',
-        authorName: 'Agent',
-        text: `${action.connectorOwnerEmail} denied ${action.requesterEmail}'s request to run ${action.toolName} with ${action.connectorOwnerEmail}'s connector. Nothing executed.`,
-        createdAt: new Date().toISOString(),
-        status: 'complete',
-        replyTo: action.operationId,
-      });
-      await transaction.put('messages', messages);
-      return updated;
-    });
-    if (!denied)
-      return Response.json({ error: 'Approval unavailable or already resolved' }, { status: 409 });
-    return Response.json({ status: 'denied', messageId: `mcp-denied:${id}` });
-  }
 
   private async universalMcpRead(request: Request): Promise<Response> {
     const input = z
@@ -1471,11 +1267,16 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       await this.state.storage.put(`dev-universal-mcp-fault:${input.invocationId}`, true);
       return Response.json({ armed: true });
     }
-    const approvalMatch = /^\/mcp-approvals\/([a-f0-9-]+)\/approve$/.exec(url.pathname);
-    if (request.method === 'POST' && approvalMatch)
-      return this.approveMcpAction(request, approvalMatch[1]);
-    const denyMatch = /^\/mcp-approvals\/([a-f0-9-]+)\/deny$/.exec(url.pathname);
-    if (request.method === 'POST' && denyMatch) return this.denyMcpAction(request, denyMatch[1]);
+    const decision = /^\/mcp-approvals\/([a-f0-9-]+)\/(approve|deny)$/.exec(url.pathname);
+    if (request.method === 'POST' && decision)
+      return this.decideConnectorApproval(request, decision[1], decision[2] === 'approve' ? 'approve' : 'deny');
+    if (request.method === 'POST' && url.pathname === '/connector-approvals/notify')
+      return this.notifyConnectorApproval(request);
+    if (request.method === 'GET' && url.pathname === '/people/by-email') {
+      const email = url.searchParams.get('email')?.trim().toLowerCase() ?? '';
+      const person = email ? await this.state.storage.get<{ id: string }>(`person:${email}`) : undefined;
+      return person ? Response.json({ id: person.id }) : Response.json({ error: 'not found' }, { status: 404 });
+    }
     if (request.method === 'POST' && url.pathname === '/agent-capability/sessions') {
       const input = (await readBoundedJson(request)) as {
         sessionId?: string;
@@ -2848,9 +2649,58 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     const targetAgentId = body.threadId ?? tree.rootId;
     if (!tree.nodes.some((node) => node.id === targetAgentId))
       return Response.json({ error: 'unknown agent' }, { status: 404 });
+    if (body.authorId && body.authorEmail)
+      await this.rememberPerson({ id: body.authorId, email: body.authorEmail.trim().toLowerCase() });
     const response = await this.agent(targetAgentId).fetch(
       new Request('https://agent/messages', forwardedRequest),
     );
+    return new Response(response.body, { status: response.status, headers: response.headers });
+  }
+
+  private async rememberPerson(person: { id: string; email: string }): Promise<void> {
+    const key = `person:${person.email}`;
+    const known = await this.state.storage.get<{ id: string }>(key);
+    if (known?.id !== person.id) await this.state.storage.put(key, { id: person.id, email: person.email });
+  }
+
+  private async notifyConnectorApproval(request: Request): Promise<Response> {
+    const input = v.parse(
+      v.object({
+        agentId: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+        approvalId: v.pipe(v.string(), v.uuid()),
+        requesterName: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+        requesterEmail: v.pipe(v.string(), v.email(), v.maxLength(320)),
+        ownerEmail: v.pipe(v.string(), v.email(), v.maxLength(320)),
+        toolName: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+      }),
+      await readBoundedJson(request),
+    );
+    if (!(await this.threadTree()).nodes.some((node) => node.id === input.agentId))
+      return Response.json({ error: 'unknown agent' }, { status: 404 });
+    await this.createNotification(
+      {
+        source: 'agent',
+        title: `${input.requesterName} wants to use your connector`,
+        body: `${input.toolName} · approve or deny`,
+        href: `/?thread=${encodeURIComponent(input.agentId)}&approval=${encodeURIComponent(input.approvalId)}`,
+        approvalId: input.approvalId,
+        agentId: input.agentId,
+      },
+      input.ownerEmail,
+    );
+    return Response.json({ notified: true });
+  }
+
+  private async decideConnectorApproval(request: Request, approvalId: string, decision: 'approve' | 'deny'): Promise<Response> {
+    const actor = this.actorFromUrl(request);
+    const agentId = new URL(request.url).searchParams.get('threadId') ?? '';
+    if (!(await this.threadTree()).nodes.some((node) => node.id === agentId))
+      return Response.json({ error: 'unknown agent' }, { status: 404 });
+    const response = await this.agent(agentId).fetch(`https://agent/connector-approvals/${approvalId}/${decision}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: actor.id, email: actor.email, name: actor.name }),
+    });
     return new Response(response.body, { status: response.status, headers: response.headers });
   }
 
@@ -3315,51 +3165,12 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     await this.state.storage.setAlarm(earliest);
   }
 
-  private async recoverMcpResults(): Promise<void> {
-    await this.state.storage.transaction(async (transaction) => {
-      const actions = await transaction.list<PendingMcpAction>({ prefix: 'mcp-pending:' });
-      const messages = (await transaction.get<ChatMessage[]>('messages')) ?? [];
-      let changed = false;
-      for (const [key, action] of actions) {
-        const execution = await transaction.get<DurableMcpExecution>(`mcp-execution:${action.id}`);
-        const status =
-          execution?.status ??
-          (action.status === 'running' || action.status === 'failed'
-            ? 'outcome-unknown'
-            : action.status);
-        if (status !== action.status) await transaction.put(key, { ...action, status });
-        const id = `mcp-result:${action.id}`;
-        if (
-          action.status !== 'succeeded' &&
-          execution?.status === 'succeeded' &&
-          execution.result !== undefined &&
-          !messages.some((message) => message.id === id)
-        ) {
-          const provenance = `${action.toolName} ran with ${action.connectorOwnerEmail}'s connector, requested by ${action.requesterEmail} and approved by ${action.connectorOwnerEmail}.`;
-          messages.push({
-            id,
-            role: 'assistant',
-            authorId: 'room-agent',
-            authorName: 'Agent',
-            text: `${provenance}\n\n${execution.result}`,
-            createdAt: new Date().toISOString(),
-            status: 'complete',
-            replyTo: action.operationId,
-          });
-          changed = true;
-        }
-      }
-      if (changed) await transaction.put('messages', messages);
-    });
-  }
 
   private async snapshot(
     actor: PersonRequestActor,
     requestedThreadId?: string,
   ): Promise<RoomSnapshot> {
-    await this.recoverMcpResults();
     const threadTree = await this.threadTree();
-    const storedMessages = await this.messages();
     let agentSettings: RoomSettings | undefined;
     let privateResources: AgentSnapshot | undefined;
     const targetAgentId = requestedThreadId ?? threadTree.rootId;
@@ -3396,9 +3207,9 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       messages,
       threadTree,
       work: privateResources ? privateResources.work : await this.workItems(),
-      mcpApprovals: [
-        ...(await this.state.storage.list<PendingMcpAction>({ prefix: 'mcp-pending:' })).values(),
-      ].filter((action) => action.actorId === actor.id || action.requesterId === actor.id),
+      mcpApprovals: ((await (await this.agent(targetAgentId).fetch('https://agent/connector-approvals')).json<{ approvals: PendingMcpAction[] }>()).approvals).filter(
+        (action) => action.actorId === actor.id || action.requesterId === actor.id,
+      ),
       active: messages.filter((message) => message.role === 'user' && message.status === 'active')
         .length,
       waiting: messages.filter((message) => message.role === 'user' && message.status === 'queued')
@@ -3626,6 +3437,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         title: `${actor.name} sent you a request`,
         body: item.title,
         href: `/?request=${encodeURIComponent(item.id)}`,
+        requestId: item.id,
       },
       input.recipientEmail,
     );
@@ -3776,6 +3588,9 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
               body: notification.body,
               href: notification.href,
               notificationId: notification.id,
+              requestId: notification.requestId,
+              approvalId: notification.approvalId,
+              agentId: notification.agentId,
             });
           } catch {
             return false;

@@ -1014,8 +1014,20 @@ app.get('/manifest.webmanifest', (context) =>
   }),
 );
 
+function serviceWorkerSource(icon: string): string {
+  return [
+    `const icon=${JSON.stringify(icon)};`,
+    "function text(value){return typeof value==='string'&&value.length<=2000?value:undefined}function readPush(raw){let value={};try{value=raw?JSON.parse(raw):{}}catch{}if(!value||typeof value!=='object')return{};return{title:text(value.title),body:text(value.body),href:text(value.href),notificationId:text(value.notificationId),requestId:text(value.requestId),approvalId:text(value.approvalId),agentId:text(value.agentId)}}",
+    "self.addEventListener('install',event=>{event.waitUntil(caches.open('chat-ax-pwa').then(cache=>cache.addAll(['/','/manifest.webmanifest'])))});",
+    "self.addEventListener('push',event=>{const data=readPush(event.data?.text());const actions=data.approvalId?[{action:'approve',title:'Approve'},{action:'deny',title:'Deny'}]:data.requestId?[{action:'accept',title:'Accept'},{action:'decline',title:'Decline'}]:[];event.waitUntil(self.registration.showNotification(data.title??'Chat AX',{body:data.body??'',icon,tag:data.approvalId??data.requestId??data.notificationId,requireInteraction:Boolean(data.approvalId||data.requestId),actions,data:{href:data.href??'/',notificationId:data.notificationId,requestId:data.requestId,approvalId:data.approvalId,agentId:data.agentId}}))});",
+    "async function decideApproval(approvalId,agentId,action){const response=await fetch(`/api/mcp-approvals/${encodeURIComponent(approvalId)}/${action}?threadId=${encodeURIComponent(agentId??'')}`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:'{}'});const title=response.ok?(action==='approve'?'Approved. It ran once, as you.':'Denied. Nothing ran.'):'Open Chat AX to decide.';await self.registration.showNotification(title,{icon,tag:approvalId,body:''});return response.ok}",
+    "async function decide(requestId,action){const response=await fetch(`/api/person-requests/${encodeURIComponent(requestId)}/${action}`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:'{}'});const title=response.ok?(action==='accept'?'Accepted. Your agent is on it.':'Declined.'):'Open Chat AX to respond.';await self.registration.showNotification(title,{icon,tag:requestId,body:''});return response.ok}",
+    "self.addEventListener('notificationclick',event=>{event.notification.close();const data=event.notification.data??{};const href=new URL(data.href??'/',self.location.origin).href;if(data.approvalId&&(event.action==='approve'||event.action==='deny')){event.waitUntil(decideApproval(data.approvalId,data.agentId,event.action).then(ok=>ok?undefined:clients.openWindow(href)));return}if(data.requestId&&(event.action==='accept'||event.action==='decline')){event.waitUntil(decide(data.requestId,event.action).then(ok=>ok?undefined:clients.openWindow(href)));return}event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(list=>{const open=list.find(client=>new URL(client.url).origin===self.location.origin);if(open){open.postMessage({type:'open-request',requestId:data.requestId,approvalId:data.approvalId});return open.focus()}return clients.openWindow(href)}))});",
+  ].join('');
+}
+
 app.get('/sw.js', (context) => {
-  const source = `self.addEventListener('install',event=>{event.waitUntil(caches.open('chat-ax-pwa').then(cache=>cache.addAll(['/','/manifest.webmanifest'])))});self.addEventListener('push',event=>{const data=event.data?.json()??{};event.waitUntil(self.registration.showNotification(data.title??'Chat AX',{body:data.body??'',icon:${JSON.stringify(pwaAssets.icon192)},data:{href:data.href??'/',notificationId:data.notificationId}}))});self.addEventListener('notificationclick',event=>{event.notification.close();const href=new URL(event.notification.data?.href??'/',self.location.origin).href;event.waitUntil(clients.openWindow(href))});`;
+  const source = serviceWorkerSource(pwaAssets.icon192);
   return context.body(source, 200, {
     'content-type': 'text/javascript; charset=utf-8',
     'cache-control': 'private, no-cache',
@@ -1339,7 +1351,7 @@ app.post('/api/mcp-approvals/:id/deny', async (context) => {
     actorName: displayName(identity),
   });
   const response = await room(context.env).fetch(
-    `https://room/mcp-approvals/${encodeURIComponent(context.req.param('id'))}/deny?${query}`,
+    `https://room/mcp-approvals/${encodeURIComponent(context.req.param('id'))}/deny?${query}&threadId=${encodeURIComponent(context.req.query('threadId') ?? '')}`,
     { method: 'POST' },
   );
   return new Response(response.body, response);
@@ -1353,7 +1365,7 @@ app.post('/api/mcp-approvals/:id/approve', async (context) => {
     actorName: displayName(identity),
   });
   const response = await room(context.env).fetch(
-    `https://room/mcp-approvals/${encodeURIComponent(context.req.param('id'))}/approve?${query}`,
+    `https://room/mcp-approvals/${encodeURIComponent(context.req.param('id'))}/approve?${query}&threadId=${encodeURIComponent(context.req.query('threadId') ?? '')}`,
     { method: 'POST' },
   );
   return new Response(response.body, response);

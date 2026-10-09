@@ -4,6 +4,19 @@ Chat AX is one shared room where several people talk to the same agents. The cor
 
 This page describes what the code enforces today. Each guarantee names the test that proves it.
 
+## Check it yourself
+
+```sh
+npm run verify:security
+```
+
+One command, about 30 seconds, no account or network needed. It runs every test named on this page, then two runtime checks against a local copy of the app:
+
+- **Boundary attacks** (`scripts/e2e-security-boundary.mjs`): a local MCP server with two real accounts, Sam and Jordan, each holding their own token. The script tries to cross between them: claiming to be Jordan in a message, having one agent tell another to call a tool, Sam approving his own request to use Jordan's connector, an outsider approving it, reusing an approval, changing the arguments after approval, approving after a denial, and reading tokens back out. It also checks that Jordan's approval runs exactly once, as Jordan, and that every step shows up in the chat. The MCP server records which account every call actually ran as. Each attempt prints `HELD` or `BROKEN`.
+- **Restart mid-reply** (`scripts/e2e-kill-mid-reply.mjs`): kills the runtime during a running tool call, restarts it, and checks that the same reply finishes.
+
+It writes `receipts/security.json` and `receipts/security-boundary.json`, listing each check, what was expected, what was observed, and every MCP call with the account it ran as. A person or an agent can read those files to audit a run. `--quick` skips the two runtime checks.
+
 ## Who can get in
 
 - **Sign-in is mandatory.** Until `CF_ACCESS_ISS` and `CF_ACCESS_AUD` are set, every route, including the API, returns a setup notice with status 503. A fresh deploy is never open. (`src/setup-page.test.ts`, `src/access-verification.test.ts`)
@@ -15,7 +28,7 @@ This page describes what the code enforces today. Each guarantee names the test 
 
 - **Turns carry their author.** Each turn is bound to the verified identity of the person who sent it, at the moment it was sent. Overlapping turns from different people keep their own authority. Names, emails, or instructions typed into a message never change it. (`src/turn-authority.test.ts`)
 - **Personal connectors stay personal.** Each person's MCP connection is stored in their own Durable Object, encrypted with a key derived for that person. The room can't read it. On your turns, the agent can list and call only your tools. (`src/capability-policy.test.ts`)
-- **Using someone else's connector needs their approval, every time.** If the agent needs a tool that belongs to another participant, it can only stage a request. The owner approves or denies that exact call: same tool, same arguments, used once, within a time limit. (`src/mcp-approval.test.ts`)
+- **Using someone else's connector needs their approval, every time.** When Sam asks the agent to use Jordan's connector, nothing runs. The agent asks Jordan, who gets a notification with Approve and Deny. If Jordan approves, that exact call runs once, as Jordan. A changed argument needs a new approval, a used approval can't be used again, a denied one can't be approved later, and nobody but Jordan can decide. Every step (requested, approved, ran, denied) is written into the chat. (`src/connector-approvals.test.ts`, `scripts/e2e-security-boundary.mjs`)
 - **Every tool call leaves a receipt.** Before any network call, Chat AX records who asked, whose connector is used, and which tool. Then it records the outcome. Receipts never store tokens or raw errors. (`src/mcp-receipts.test.ts`)
 
 ## How agents talk to each other

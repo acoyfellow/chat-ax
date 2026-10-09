@@ -1,14 +1,19 @@
 # Chat AX
 
-**One shared chat room for your whole team, with a fleet of AI agents that never forget.** It runs entirely on your own Cloudflare account.
+A shared chat room where your team and a fleet of AI agents work together, on your own Cloudflare account.
 
-![Your team and an agent in one shared conversation](docs/images/chat.png)
+https://github.com/acoyfellow/chat-ax/raw/main/docs/images/chat-ax.mp4
 
-- **One conversation, everyone in it.** Your team talks to the same agent in the same room, and everyone sees every reply as it streams in.
-- **A fleet, not a bot.** Give the main agent helpers, give them helpers, and watch them work on a live map. Each agent has its own memory, files, skills, and schedule.
-- **Turns that survive crashes.** Every agent turn is stored as it runs, so a deploy or restart in the middle of a reply picks up where it left off. Built on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable).
-- **Each person's tools stay theirs.** Connect an MCP server with your own account. The agent can use your tools only on turns you send. Nobody borrows anyone else's access by asking nicely.
-- **Nothing to manage.** No database to run and no API keys to paste. It runs on the Workers free plan, and the default model is served by Workers AI on your account.
+- **One agent, many people.** Everyone talks to the same agent and sees every reply stream in. When several people ask at once, you choose how the queue runs: first in first out, quick questions first, round robin, parallel, and 16 more.
+- **Each agent has its own space.** Settings, tools, skills, files, state and scheduled jobs belong to that agent. It can edit them itself, with no one clicking anything.
+- **Replies survive restarts.** Every turn is stored as it runs. Kill the runtime mid-reply and the same reply finishes after it comes back. Built on [pi-durable](https://www.npmjs.com/package/@earendil-works/pi-durable).
+- **Your tools stay yours.** Connect your own MCP server (GitLab, Jira, anything). The agent uses your connector only on turns you send. If Sam asks it to use yours, nothing runs: you get a notification, and if you approve, that one action runs once, as you. Every step is written into the chat.
+- **Agents are rooms too.** Give an agent helpers, and give them helpers. Each one is the same kind of room. Agents message their parent and children; anything sideways needs a one-time grant.
+- **Push notifications** when someone needs you, with Approve and Deny on the notification itself.
+- **Drive it from your own agent.** Everything in the app is also an MCP server at `/mcp`. From Pi, Claude Code or any MCP client you can create agents, message them, schedule jobs and watch the fleet without opening the UI.
+- **Check the security yourself.** `npm run verify:security` runs a local MCP server with two accounts and tries to cross between them. Each attempt prints `HELD` or `BROKEN`, and the run writes receipts you can read. See [docs/security.md](docs/security.md).
+
+It runs on the Workers free plan. No database to run and no API keys to paste; the default model is Workers AI on your account.
 
 ![The fleet map: agents and their helpers](docs/images/fleet.png)
 
@@ -67,6 +72,56 @@ Every setting is optional. Set them in `wrangler.jsonc`, or as variables or secr
 
 To use a custom domain, add it under the Worker's **Settings → Domains & Routes**, add the domain to the same Access application, and turn `workers_dev` off.
 
+## Bring your own MCP
+
+Chat AX ships with no tools of its own. You point it at one MCP server, usually the one your company already runs in front of GitLab, Jira, a wiki, or a deploy system, and each person connects it with their own login.
+
+```jsonc
+// wrangler.jsonc → "vars"
+"MCP_SERVER_URL": "https://tools.example.com/mcp",
+"MCP_CONNECTOR_NAME": "Company tools"
+```
+
+Deploy, then each person opens **Settings → Connectors → Connect** and signs in. That is the whole setup.
+
+What the server needs:
+
+- Reachable from the internet over HTTPS, speaking MCP over streamable HTTP.
+- OAuth 2.1 with dynamic client registration. If it does not publish discovery metadata, also set `MCP_OAUTH_AUTHORIZE_URL`, `MCP_OAUTH_TOKEN_URL`, and `MCP_OAUTH_REGISTRATION_URL`.
+
+What you get, without writing any permission code:
+
+- **Your access stays yours.** Tokens are encrypted per person in the connector vault. An agent turn can use your connector only when you sent it. Asking in chat, "use Jordan's GitLab", does nothing.
+- **Asking crosses people, not credentials.** When Sam needs something only Jordan can do, Sam's agent calls `request_person`. Jordan gets a request card with Accept and Decline. If Jordan accepts, the work runs with Jordan's own connector, in Jordan's name. Sam never holds Jordan's token.
+- **Writes ask first.** Tool calls that change things show an approval card to the connector owner before they run, and every call leaves a receipt.
+
+### Keep your server private
+
+The address of your MCP server is deployment configuration, not code. Keep it out of your fork:
+
+```text
+chat-ax            public engine, no company details
+chat-ax-private    your repo: ENGINE_SHA, wrangler.production.jsonc with MCP_SERVER_URL, deploy script
+```
+
+The private repo pins an exact engine commit, overlays its config, and deploys. Upgrading the engine is a one-line change to `ENGINE_SHA`.
+
+### See the hand-off without a second person
+
+`npm run demo:review` opens two browser windows on local dev, one signed in as Sam and one as Jordan. Sam asks his agent to get a merge request reviewed by Jordan, the request card appears only on Jordan's side, Jordan accepts, and Sam watches it change to Reviewing. Add `-- --decline` to show the refusal path. It refuses to run against anything but localhost.
+
+## Use it from your own agent
+
+Chat AX is an MCP server at `https://<your-host>/mcp`, behind the same Access sign-in. Point any MCP client at it and you act as yourself:
+
+```text
+list_agents · create_agent · send_agent_message · delegate_to_agent
+agent_job_create · agent_job_pause · agent_skill_create · agent_file_upload
+chat_send_message · request_person · grant_agent_communication · …37 tools
+```
+
+The same rules apply as in the UI: your connector only runs on your turns, other people's connectors need their approval, and agents only message within their tree.
+
 ## How it works
 
 ```text
@@ -95,8 +150,11 @@ npm test            # unit tests
 npm run dev:test    # local server with the test model on :8787
 npm run test:e2e    # browser test of the fleet map against that server
 npm run typecheck
+npm run verify:security   # security checks, with receipts in receipts/
 npm run setup       # build and deploy behind Access
 ```
+
+`/video` on a local server plays the showcase above. The approval scene is the real chat component fed scripted data. `?t=26.6` freezes it at a moment.
 
 The code is in `src/`. Start with `worker.ts` (routes), `room.ts` (the shared room), and `agent-do.ts` (one agent). The UI is Svelte in `src/ui/`.
 

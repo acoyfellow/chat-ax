@@ -12,7 +12,9 @@
     "dev:test": "npm run build && wrangler dev --config wrangler.test.jsonc --port 8787",
     "typecheck": "node build.mjs && tsc --noEmit --noCheck false",
     "format": "biome format --write .",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "demo:review": "node scripts/demo-review-request.mjs",
+    "verify:security": "node scripts/verify-security.mjs"
   },
   "dependencies": {
     "@earendil-works/chord": "^1.1.0",

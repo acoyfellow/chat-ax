@@ -149,7 +149,7 @@ function completeCredentials(credentials: PushCredentials): Required<PushCredent
 export async function sendWebPush(
   credentials: PushCredentials,
   subscription: StoredPushSubscription['subscription'],
-  data: { title: string; body: string; href: string; notificationId: string },
+  data: { title: string; body: string; href: string; notificationId: string; requestId?: string; approvalId?: string; agentId?: string },
   transport: typeof fetch = fetch,
 ): Promise<boolean> {
   const complete = completeCredentials(credentials);

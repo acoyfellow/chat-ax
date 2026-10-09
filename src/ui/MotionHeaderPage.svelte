@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import MotionHeader from './MotionHeader.svelte';
+  import Showcase, { showcaseDuration } from './Showcase.svelte';
 
-  const duration = 8;
+  const duration = showcaseDuration;
   let time = $state(0);
   let playing = $state(true);
   let scale = $state(1);
@@ -42,7 +42,7 @@
 <main>
   <div class="viewport" style:width={`${1080 * scale}px`} style:height={`${1080 * scale}px`}>
     <div class="frame" style:transform={`scale(${scale})`}>
-      <MotionHeader {time} {duration} />
+      <Showcase {time} />
     </div>
   </div>
   <nav>

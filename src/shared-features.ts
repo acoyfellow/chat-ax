@@ -66,6 +66,9 @@ export type RoomNotification = {
   source: 'agent' | 'job';
   messageId?: string;
   recipientEmail?: string;
+  requestId?: string;
+  approvalId?: string;
+  agentId?: string;
 };
 
 export type StoredPushSubscription = {

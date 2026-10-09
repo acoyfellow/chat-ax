@@ -36,6 +36,16 @@ import { nativeAgentCapabilityPrompt, SerialOperationLane } from './native-agent
 import { FrameCoalescer, type LiveFrame, encodeFrame, isWebSocketUpgrade } from './live-socket';
 import { cloneRequest, parseBoundedJson, readBoundedJson } from './safe-json';
 import { resolveTurnAuthority } from './turn-authority';
+import type { PendingMcpAction } from './mcp-approval';
+import { executeMcpOnce, type DurableMcpExecution } from './mcp-execution';
+import {
+  type ApprovalActor,
+  approvalLifetimeMilliseconds,
+  approvalLogLine,
+  argumentsDigest,
+  canonicalArguments,
+  decisionRefusal,
+} from './connector-approvals';
 import {
   type AgentStateEntry,
   type RecurringJob,
@@ -251,6 +261,13 @@ const listMcpParameters = emptyParameters;
 const callMcpParameters = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 200 }),
   argumentsJson: Type.Optional(Type.String({ maxLength: 8_000 })),
+  connectorOwnerEmail: Type.Optional(
+    Type.String({
+      maxLength: 320,
+      description:
+        "Email of the person whose connector should run this. Omit to use the speaker's own connector. Another person's connector never runs until that person approves this exact call.",
+    }),
+  ),
 });
 
 const defaults = (): AgentResources => agentResourcesSchema.parse({});
@@ -1209,14 +1226,23 @@ export class AgentDO extends DurableObject<AgentEnv> {
       {
         name: 'call_mcp',
         label: 'Call MCP tool',
-        description: "Call one MCP connector tool using the verified speaker's own connector.",
+        description:
+          "Call one MCP connector tool. Without connectorOwnerEmail it runs now on the speaker's own connector. With another person's email it only asks that person; nothing runs until they approve this exact call.",
         parameters: callMcpParameters,
         replay: 'unsafe' as const,
         execute: async (
-          input: { name: string; argumentsJson?: string },
+          input: { name: string; argumentsJson?: string; connectorOwnerEmail?: string },
           invocation: TurnInvocation,
         ) => {
           const authority = resolveTurnAuthority(await this.messages(), invocation.operationId);
+          const ownerEmail = input.connectorOwnerEmail?.trim().toLowerCase();
+          if (ownerEmail && ownerEmail !== authority.actorEmail) {
+            const approval = await this.stageConnectorApproval(authority, ownerEmail, input.name, canonicalArguments(input.argumentsJson), invocation.operationId);
+            return {
+              content: [{ type: 'text' as const, text: `Asked ${ownerEmail} to approve ${input.name}. Nothing has run. It runs once, as ${ownerEmail}, only if they approve.` }],
+              details: { approvalId: approval.id, status: 'pending', connectorOwnerEmail: ownerEmail },
+            };
+          }
           const arguments_ = input.argumentsJson?.trim()
             ? z.record(z.string(), z.unknown()).parse(JSON.parse(input.argumentsJson))
             : {};
@@ -1241,6 +1267,120 @@ export class AgentDO extends DurableObject<AgentEnv> {
         },
       },
     ];
+  }
+
+  private async stageConnectorApproval(
+    authority: { actorId: string; actorEmail: string; actorName: string },
+    ownerEmail: string,
+    toolName: string,
+    argumentsJson: string,
+    operationId: string,
+  ): Promise<PendingMcpAction> {
+    const identity = await this.ctx.storage.get<{ agentId: string }>('identity');
+    if (!identity) throw new Error('Agent identity is unavailable');
+    const room = this.env.ROOM.get(this.env.ROOM.idFromName('agent-coordinator-v1'));
+    const ownerResponse = await room.fetch(`https://room/people/by-email?email=${encodeURIComponent(ownerEmail)}`);
+    if (!ownerResponse.ok) throw new Error(`${ownerEmail} has not joined this workspace, so they cannot be asked yet`);
+    const owner = z.object({ id: z.string().min(1) }).parse(await ownerResponse.json());
+    const action: PendingMcpAction = {
+      id: crypto.randomUUID(),
+      operationId,
+      actorId: owner.id,
+      requesterId: authority.actorId,
+      requesterEmail: authority.actorEmail,
+      connectorOwnerEmail: ownerEmail,
+      toolName,
+      argumentsJson,
+      argumentsDigest: await argumentsDigest(argumentsJson),
+      resultVisibility: 'room',
+      expiresAt: Date.now() + approvalLifetimeMilliseconds,
+      status: 'pending',
+    };
+    await this.ctx.storage.transaction(async (transaction) => {
+      await transaction.put(`mcp-pending:${action.id}`, action);
+      await this.appendApprovalLog(transaction, action, 'requested');
+    });
+    await room.fetch('https://room/connector-approvals/notify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ agentId: identity.agentId, approvalId: action.id, requesterName: authority.actorName, requesterEmail: authority.actorEmail, ownerEmail, toolName }),
+    });
+    this.announceChange();
+    return action;
+  }
+
+  private async appendApprovalLog(
+    transaction: { get<T>(key: string): Promise<T | undefined>; put<T>(key: string, value: T): Promise<void> },
+    action: PendingMcpAction,
+    stage: Parameters<typeof approvalLogLine>[1],
+    detail = '',
+  ): Promise<void> {
+    const messages = (await transaction.get<ChatMessage[]>('resource:messages')) ?? [];
+    const entry: ChatMessage = {
+      id: `mcp-${stage}:${action.id}`,
+      role: 'assistant',
+      authorId: 'connector-approvals',
+      authorName: 'Approvals',
+      text: approvalLogLine(action, stage, detail),
+      createdAt: new Date().toISOString(),
+      status: 'complete',
+      replyTo: `approval:${action.id}`,
+    };
+    if (messages.some((message) => message.id === entry.id)) return;
+    await transaction.put('resource:messages', [...messages, entry].slice(-200));
+  }
+
+  private async pendingApprovals(): Promise<PendingMcpAction[]> {
+    return [...(await this.ctx.storage.list<PendingMcpAction>({ prefix: 'mcp-pending:' })).values()];
+  }
+
+  private async decideConnectorApproval(id: string, decision: 'approve' | 'deny', actor: ApprovalActor): Promise<Response> {
+    const decided = await this.ctx.storage.transaction(async (transaction) => {
+      const key = `mcp-pending:${id}`;
+      const action = await transaction.get<PendingMcpAction>(key);
+      const refusal = decisionRefusal(action, actor, Date.now());
+      if (refusal || !action) return { refusal: refusal ?? 'Approval not found' };
+      if (action.argumentsDigest !== (await argumentsDigest(action.argumentsJson))) return { refusal: 'The request changed after it was asked' };
+      const status = decision === 'approve' ? 'not-executed' : 'denied';
+      const updated: PendingMcpAction = { ...action, status };
+      await transaction.put(key, updated);
+      if (decision === 'approve') await transaction.put(`mcp-execution:${id}`, { status: 'not-executed' } satisfies DurableMcpExecution);
+      await this.appendApprovalLog(transaction, action, decision === 'approve' ? 'approved' : 'denied');
+      return { action: updated };
+    });
+    this.announceChange();
+    if ('refusal' in decided) return Response.json({ error: decided.refusal }, { status: 409 });
+    if (decision === 'deny') return Response.json({ status: 'denied' });
+    const action = decided.action;
+    try {
+      const execution = await executeMcpOnce(this.ctx.storage, `mcp-execution:${id}`, () =>
+        recordMcpExecution(
+          this.ctx.storage,
+          { operationId: action.operationId, invocationId: `approved:${id}`, actorId: action.actorId, toolName: action.toolName },
+          () =>
+            callSpeakerMcpTool({
+              namespace: this.env.CONNECTOR_VAULT,
+              actorId: action.actorId,
+              env: this.env,
+              name: action.toolName,
+              arguments: z.record(z.string(), z.unknown()).parse(JSON.parse(action.argumentsJson)),
+            }),
+        ),
+      );
+      await this.ctx.storage.transaction(async (transaction) => {
+        await transaction.put(`mcp-pending:${id}`, { ...action, status: 'succeeded' });
+        await this.appendApprovalLog(transaction, action, 'ran', execution.result ?? '');
+      });
+      this.announceChange();
+      return Response.json({ status: 'succeeded' });
+    } catch (error) {
+      await this.ctx.storage.transaction(async (transaction) => {
+        await transaction.put(`mcp-pending:${id}`, { ...action, status: 'outcome-unknown' });
+        await this.appendApprovalLog(transaction, action, 'failed', error instanceof Error ? error.message.slice(0, 200) : '');
+      });
+      this.announceChange();
+      return Response.json({ error: 'The action may not have completed. It will not run again.' }, { status: 502 });
+    }
   }
 
   private ensureDrain(): void {
@@ -1312,6 +1452,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
         }
         await this.pi.setThinkingLevel(settings.thinkingLevel);
         const nativeProof = /^NATIVE_TOOL_PROOF ([a-z_]+) (\{.*\})$/s.exec(active.text);
+        const demoReviewAsk = /^ask (\S+@\S+) to review (https?:\/\/\S+?)[.!]?$/i.exec(active.text.trim());
         if (this.faux && active.text === 'DURABLE_RECOVERY_PROOF') {
           const recovering = Boolean(await this.ctx.storage.get(`durable-proof:started:${active.id}`));
           this.faux.setResponses(
@@ -1324,6 +1465,21 @@ export class AgentDO extends DurableObject<AgentEnv> {
           );
         } else if (this.faux && active.text === 'NATIVE_CAPABILITY_PROOF') {
           this.faux.setResponses([fauxAssistantMessage(nativeAgentCapabilityPrompt)]);
+        } else if (this.faux && demoReviewAsk) {
+          const [, recipientEmail, resourceUrl] = demoReviewAsk;
+          this.faux.setResponses([
+            fauxAssistantMessage(
+              fauxToolCall('request_person', {
+                recipientEmail,
+                title: `Review ${resourceUrl.split('/').slice(-2).join(' ')}`,
+                details: `Please review ${resourceUrl} with your own code host access.`,
+                kind: 'review',
+                resourceUrl,
+              }),
+              { stopReason: 'toolUse' },
+            ),
+            fauxAssistantMessage(`Asked ${recipientEmail} to review it. They decide, with their own access.`),
+          ]);
         } else if (this.faux && nativeProof) {
           const arguments_ = proofToolArguments(JSON.parse(nativeProof[2]));
           this.faux.setResponses([
@@ -1804,6 +1960,13 @@ export class AgentDO extends DurableObject<AgentEnv> {
       this.privateResourceRequest(cloneRequest(request), url),
     );
     if (privateResponse) return privateResponse;
+    const approvalDecision = /^\/connector-approvals\/([a-f0-9-]+)\/(approve|deny)$/.exec(url.pathname);
+    if (request.method === 'POST' && approvalDecision) {
+      const actor = z.object({ id: z.string().min(1), email: z.string().email(), name: z.string().min(1) }).parse(await readBoundedJson(request));
+      return this.decideConnectorApproval(approvalDecision[1], approvalDecision[2] === 'approve' ? 'approve' : 'deny', actor);
+    }
+    if (request.method === 'GET' && url.pathname === '/connector-approvals')
+      return Response.json({ approvals: await this.pendingApprovals() });
     if (request.method === 'POST' && url.pathname === '/communications/inbox') {
       if (!(await this.ctx.storage.get('identity')))
         return Response.json({ error: 'unknown agent' }, { status: 404 });

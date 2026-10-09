@@ -8,11 +8,13 @@
   import AgentAvatar from './AgentAvatar.svelte';
 
   type AgentInput = Omit<FleetOperationsAgent, 'context'> & { context?: FleetOperationsAgent['context'] };
-  let { nodes = [], activeId = '', onOpenConversation = () => {}, onClose = () => {} }: {
+  type ScriptedFleet = { agents: FleetOperationsAgent[]; events: FleetOperationsEvent[]; positions?: Record<string, Point>; selectedId?: string; now: number };
+  let { nodes = [], activeId = '', onOpenConversation = () => {}, onClose = () => {}, scripted = null }: {
     nodes?: AgentInput[];
     activeId?: string;
     onOpenConversation?: (id: string) => void;
     onClose?: () => void;
+    scripted?: ScriptedFleet | null;
   } = $props();
   let agents = $state<FleetOperationsAgent[]>([]);
   let events = $state<FleetOperationsEvent[]>([]);
@@ -55,6 +57,15 @@
   let selected = $derived(agents.find((agent) => agent.id === selectedId));
   let pointById = $derived(new Map(points.map((point) => [point.id, point])));
   let now = $state(Date.now());
+  $effect(() => {
+    if (!scripted) return;
+    agents = scripted.agents;
+    events = scripted.events;
+    layoutPositions = scripted.positions ?? {};
+    if (scripted.selectedId) selectedId = scripted.selectedId;
+    now = scripted.now;
+    mapReady = true;
+  });
   let terminalEvents = $derived(events.filter((event) => event.type !== 'communication.sent'));
   let recentEvents = $derived(terminalEvents.filter((event) =>
     now - Date.parse(event.occurredAt) < 30_000 &&
@@ -364,6 +375,7 @@
     selectedId = activeId || nodes[0]?.id || '';
     agents = nodes.map((node) => ({ ...node, context: node.context ?? { used: 0, capacity: 0, ratio: 0 } }));
     panel.focus();
+    if (scripted) return () => previousFocus?.focus();
     void refresh().catch(() => {
       mapReady = true;
     });
