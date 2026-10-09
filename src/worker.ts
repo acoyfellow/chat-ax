@@ -41,6 +41,7 @@ import { createUiStressFixture } from './ui-stress';
 import AvatarLab from './ui/AvatarLab.svelte';
 import Chat from './ui/Chat.svelte';
 import StyleLab from './ui/StyleLab.svelte';
+import MotionHeaderPage from './ui/MotionHeaderPage.svelte';
 
 interface Env extends RoomEnv {
   AI: Ai;
@@ -1468,7 +1469,7 @@ app.post('/api/pi/compact', async (context) => {
     actorEmail: identity.email,
     actorName: displayName(identity),
   });
-  const response = await room(context.env).fetch(`https://room/pi/compact?${query}`, {
+  const response = await room(context.env).fetch(`https://room/history/compact?${query}`, {
     method: 'POST',
   });
   return new Response(response.body, response);
@@ -1517,6 +1518,14 @@ app.get('/agent', (context) =>
   svelteRenderer(AvatarLab, {
     hydrateAs: 'avatarLab',
     title: 'Chat AX · Agent avatar explorer',
+    props: {},
+  })(context, renderWithoutFallthrough),
+);
+
+app.get('/video', (context) =>
+  svelteRenderer(MotionHeaderPage, {
+    hydrateAs: 'motionHeader',
+    title: 'Chat AX · Motion header',
     props: {},
   })(context, renderWithoutFallthrough),
 );

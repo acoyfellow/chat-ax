@@ -7,6 +7,7 @@ await buildHonoSvelte({
     chat: './ui/Chat.svelte',
     avatarLab: './ui/AvatarLab.svelte',
     styleLab: './ui/StyleLab.svelte',
+    motionHeader: './ui/MotionHeaderPage.svelte',
   },
   skipWorkerBundle: true,
 });

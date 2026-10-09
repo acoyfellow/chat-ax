@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ArrowRight, ChevronDown, ChevronUp, ExternalLink, Maximize2, Minus, Move, Plus, X } from '@lucide/svelte';
   import { coalescedTask, openLiveConnection } from './live-connection';
+  import { relativeTime } from './relative-time';
   import { onMount } from 'svelte';
   import type { FleetOperationsAgent, FleetOperationsEvent } from '../fleet-operations';
   import { createFleetLayout } from '../fleet-operations';
@@ -137,6 +138,13 @@
     panX = anchor.x - graphX * nextZoom;
     panY = anchor.y - graphY * nextZoom;
     zoom = nextZoom;
+  }
+
+  function focusAgent(id: string) {
+    const point = pointById.get(id);
+    if (!point) return;
+    panX = width / 2 - point.x * zoom;
+    panY = height / 2 - point.y * zoom;
   }
 
   function resetView() {
@@ -335,13 +343,6 @@
     return 'sent a message to';
   }
 
-  function relativeTime(occurredAt: string) {
-    const seconds = Math.max(0, Math.round((now - Date.parse(occurredAt)) / 1_000));
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.round(seconds / 60);
-    return `${minutes}m ago`;
-  }
-
   async function refresh() {
     const [response, layoutResponse] = await Promise.all([
       fetch('/api/fleet/operations'),
@@ -417,9 +418,10 @@
               <path class="communication" class:failed={event.type === 'communication.failed'} data-from-agent-id={event.fromAgentId} data-to-agent-id={event.toAgentId} data-action={event.action} data-result={event.type} d={edgePath(event)} marker-end="url(#arrow)" />
             {/each}
             {#each paintedPoints as point (point.id)}
-              <g id={`fleet-node-${point.id}`} data-agent-id={point.id} class="node" class:selected={point.id === selectedId} class:lifted={point.id === draggedId} transform={`translate(${point.x},${point.y})`} role="button" tabindex={point.id === selectedId ? 0 : -1} aria-label={`${point.title}, ${point.status}, context ${Math.round(point.context.ratio * 100)} percent`} onclick={() => { if (suppressNextClick) { suppressNextClick = false; return; } select(point.id); }} onkeydown={(event) => handleNodeKeydown(event, point.id)}>
+              <g id={`fleet-node-${point.id}`} data-agent-id={point.id} class="node" class:selected={point.id === selectedId} class:lifted={point.id === draggedId} transform={`translate(${point.x},${point.y})`} role="button" tabindex={point.id === selectedId ? 0 : -1} aria-label={`${point.title}, ${point.status}`} onclick={() => { if (suppressNextClick) { suppressNextClick = false; return; } select(point.id); }} onkeydown={(event) => handleNodeKeydown(event, point.id)}>
                 {#if point.id === selectedId}<circle class="selection" r="36" />{/if}
                 <foreignObject x="-32" y="-32" width="64" height="64"><AgentAvatar hash={point.avatarSeed} size={64} options={{ scale: 1.2 }} /></foreignObject>
+                <circle class="hit-area" r="34" />
               </g>
             {/each}
           </g>
@@ -439,16 +441,15 @@
         <div id="fleet-inspector-content" inert={!inspectorExpanded} aria-hidden={!inspectorExpanded}>
         {#if selected}
           <div class="identity"><AgentAvatar hash={selected.avatarSeed} size={48} /><div><h3>{selected.title}</h3><p>{selected.status}</p></div></div>
-          <div class="meter"><span>Context</span><strong>{Math.round(selected.context.ratio * 100)}%</strong><progress max="1" value={selected.context.ratio}> {Math.round(selected.context.ratio * 100)}% </progress></div>
           <button class="open" type="button" onclick={() => onOpenConversation(selected.id)}>Open conversation <ExternalLink size={15} /></button>
         {:else}<p>Select an agent to inspect it.</p>{/if}
         <section class="activity"><div class="activity-heading"><div><h3>Recent handoffs</h3><p>Delivered and failed communication between agents</p></div><span>{terminalEvents.length}</span></div><ol>
           {#each terminalEvents.slice(0, 12) as event}
-            <li class:failed={event.type === 'communication.failed'}>
+            <li class:failed={event.type === 'communication.failed'}><button class="handoff" type="button" aria-label={`Show ${agentName(event.toAgentId)} on the map`} onclick={() => { select(event.toAgentId); focusAgent(event.toAgentId); }}>
               <div class="route"><AgentAvatar hash={agents.find((agent) => agent.id === event.fromAgentId)?.avatarSeed} size={28} /><ArrowRight size={13} /><AgentAvatar hash={agents.find((agent) => agent.id === event.toAgentId)?.avatarSeed} size={28} /></div>
               <p><strong>{agentName(event.fromAgentId)}</strong> {activityVerb(event)} <strong>{agentName(event.toAgentId)}</strong>.</p>
-              <small>{event.type === 'communication.failed' ? 'Failed' : 'Delivered'} · {relativeTime(event.occurredAt)}</small>
-            </li>
+              <small>{event.type === 'communication.failed' ? 'Failed' : 'Delivered'} · <time datetime={event.occurredAt} title={new Date(event.occurredAt).toLocaleString()}>{relativeTime(event.occurredAt, now)}</time></small>
+            </button></li>
           {:else}<li class="empty">Handoffs will appear here as agents communicate.</li>{/each}
         </ol></section>
         </div>
@@ -469,15 +470,14 @@
   .map { position: relative; min-width: 0; overflow: hidden; touch-action: none; cursor: grab; background-color: color-mix(in srgb, var(--surface-secondary, #f7f7f7) 80%, transparent); background-image: radial-gradient(circle, color-mix(in srgb, var(--text-secondary, #666) 22%, transparent) 1px, transparent 1px); background-size: 22px 22px; }
   .map.dragging { cursor: grabbing; } svg { width: 100%; height: 100%; user-select: none; } .hierarchy { stroke: color-mix(in srgb, var(--text-secondary, #666) 38%, transparent); stroke-width: 1.5; }
   .communication { fill: none; stroke: #3979e8; stroke-width: 3; stroke-dasharray: 8 6; animation: flow 1s linear infinite; } .communication.failed { stroke: var(--error, #b42318); }
-  marker path { fill: #3979e8; } .node { cursor: grab; outline: none; } .map.dragging .node { cursor: grabbing; } .node.lifted { filter: drop-shadow(0 10px 14px rgb(0 0 0 / 35%)); } .node.lifted :global(foreignObject) { transform: scale(1.08); transform-origin: center; transform-box: fill-box; } .node :global(svg), .node :global(img) { pointer-events: none; -webkit-user-drag: none; } .selection { fill: none; stroke: #3979e8; stroke-width: 3; vector-effect: non-scaling-stroke; }
+  marker path { fill: #3979e8; } .node { cursor: grab; outline: none; } .node foreignObject { pointer-events: none; } .hit-area { fill: transparent; pointer-events: all; } .map.dragging .node { cursor: grabbing; } .node.lifted { filter: drop-shadow(0 10px 14px rgb(0 0 0 / 35%)); } .node.lifted :global(foreignObject) { transform: scale(1.08); transform-origin: center; transform-box: fill-box; } .node :global(svg), .node :global(img) { pointer-events: none; -webkit-user-drag: none; } .selection { fill: none; stroke: #3979e8; stroke-width: 3; vector-effect: non-scaling-stroke; }
   .node:focus-visible .selection { stroke-width: 5; } .map-tools { position: absolute; left: 16px; bottom: 16px; display: grid; overflow: hidden; border: 1px solid var(--border, #ddd); border-radius: 12px; background: var(--surface, #fff); box-shadow: 0 8px 24px rgb(0 0 0 / 12%); }
   .map-tools button { display: grid; width: 46px; height: 46px; place-items: center; border: 0; border-bottom: 1px solid var(--border, #ddd); background: transparent; color: inherit; cursor: pointer; } .map-tools button:last-child { border-bottom: 0; } .map-tools button:hover { background: var(--surface-secondary, #f7f7f7); }
   .map-hint { position: absolute; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid var(--border, #ddd); border-radius: 10px; background: color-mix(in srgb, var(--surface, #fff) 92%, transparent); color: var(--text-secondary, #666); font-size: 12px; pointer-events: none; }
   aside { min-width: 0; overflow: auto; padding: 24px; border-left: 1px solid var(--border, #ddd); background: var(--surface, #fff); } .inspector-toggle { display: none; } aside.collapsed #fleet-inspector-content { visibility: hidden; } .identity { display: flex; align-items: center; gap: 12px; } .identity h3 { font-size: 16px; }
-  .meter { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 24px; } progress { grid-column: 1 / -1; width: 100%; accent-color: #3979e8; }
   .open { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 18px; padding: 10px; border: 0; border-radius: 10px; background: #2463cf; color: #fff; cursor: pointer; }
   .activity { margin-top: 30px; } .activity-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; } .activity-heading h3 { font-size: 14px; } .activity-heading > span { min-width: 26px; padding: 4px 7px; border-radius: 999px; background: var(--surface-secondary, #f2f2f2); text-align: center; font-size: 11px; }
-  ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; } .activity li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; padding: 11px; border: 1px solid var(--border, #ddd); border-radius: 11px; background: var(--surface-secondary, #fafafa); } .activity li.failed { border-color: color-mix(in srgb, var(--error, #b42318) 35%, var(--border, #ddd)); } .route { grid-row: 1 / 3; display: flex; align-items: center; gap: 2px; } .activity li p { align-self: end; color: inherit; line-height: 1.35; } .activity li small { align-self: start; margin-top: 3px; } .empty { display: block !important; color: var(--text-secondary, #666); font-size: 12px; }
+  ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; } .activity li { padding: 0; border-radius: 11px; } .handoff { width: 100%; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; padding: 11px; text-align: left; font: inherit; color: inherit; cursor: pointer; } .handoff:hover { border-color: var(--border-strong, #a8a8a8); } .handoff:focus-visible { outline: 2px solid var(--focus, #0055c7); outline-offset: 2px; } .activity li .handoff { border: 1px solid var(--border, #ddd); border-radius: 11px; background: var(--surface-secondary, #fafafa); } .activity li.failed .handoff { border-color: color-mix(in srgb, var(--error, #b42318) 35%, var(--border, #ddd)); } .route { grid-row: 1 / 3; display: flex; align-items: center; gap: 2px; } .activity li p { align-self: end; color: inherit; line-height: 1.35; } .activity li small { align-self: start; margin-top: 3px; } .empty { display: block !important; color: var(--text-secondary, #666); font-size: 12px; }
   @keyframes flow { to { stroke-dashoffset: -14; } }
   @media (prefers-reduced-motion: reduce) { .communication { animation: none; stroke-dasharray: none; } aside { transition: none; } }
   @media (max-width: 720px) { header { height: 64px; padding: 0 14px; } header p { max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .workspace { height: calc(100% - 64px); display: grid; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; overflow: hidden; } .map { min-height: 0; overflow: hidden; } aside { max-height: 44vh; padding: 8px 18px 18px; border: 0; border-top: 1px solid var(--border, #ddd); border-radius: 18px 18px 0 0; box-shadow: 0 -10px 30px rgb(0 0 0 / 10%); transition: max-height 160ms ease; } aside.collapsed { max-height: 58px; overflow: hidden; } .inspector-toggle { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; border: 0; background: transparent; color: inherit; font-weight: 650; } .map-tools { left: 10px; bottom: 10px; grid-auto-flow: column; } .map-tools button { width: 48px; height: 48px; border-bottom: 0; border-right: 1px solid var(--border, #ddd); } .map-tools button:last-child { border-right: 0; } .map-hint { right: 10px; bottom: 10px; } .activity { margin-top: 22px; } }

@@ -129,6 +129,7 @@ export type FleetEvent = {
     | 'agent.renamed'
     | 'agent.deleted'
     | 'agent.context.updated'
+    | 'agent.communication'
     | 'fleet.layout.updated';
   agentId: string;
   occurredAt: string;
@@ -202,7 +203,7 @@ export type ChatMessage = {
   systemPrompt?: string;
   avatarUrl?: string;
   attachmentIds?: string[];
-  source?: 'person' | 'job';
+  source?: 'person' | 'job' | 'agent';
   replyTo?: string;
   reasoning?: string;
   tools?: ChatToolActivity[];
@@ -445,7 +446,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     }
   }
 
-  private async proxySelectedAgent(request: Request, path: string): Promise<Response | undefined> {
+  private async proxySelectedAgent(request: Request, path: string): Promise<Response> {
     const url = new URL(request.url);
     const tree = await this.threadTree();
     const threadId = url.searchParams.get('threadId') ?? tree.rootId;
@@ -1913,90 +1914,31 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     }
     if (request.method === 'POST' && url.pathname === '/messages') return this.submit(request);
     if (request.method === 'POST' && url.pathname === '/history/clear')
-      return (
-        (await this.proxySelectedAgent(request, '/history/clear')) ?? this.clearHistory(request)
-      );
+      return this.proxySelectedAgent(request, '/history/clear');
     if (request.method === 'POST' && url.pathname === '/history/compact')
-      return (
-        (await this.proxySelectedAgent(request, '/history/compact')) ?? this.compactHistory(request)
-      );
-    if (request.method === 'POST' && url.pathname === '/pi/compact') return this.compactPi(request);
+      return this.proxySelectedAgent(request, '/history/compact');
     if (request.method === 'GET' && url.pathname === '/work')
-      return (
-        (await this.proxySelectedAgent(request, '/work')) ??
-        Response.json({ work: await this.workItems() })
-      );
-    if (url.pathname === '/skills') {
-      const proxied = await this.proxySelectedAgent(request, '/skills');
-      if (proxied) return proxied;
-      if (request.method === 'GET') return Response.json({ skills: await this.roomSkills() });
-      if (request.method === 'POST') return this.writeSkill('create', request);
-    }
-    if (url.pathname.startsWith('/skills/')) {
-      const name = decodeURIComponent(url.pathname.slice('/skills/'.length));
-      const proxied = await this.proxySelectedAgent(request, `/skills/${encodeURIComponent(name)}`);
-      if (proxied) return proxied;
-      if (request.method === 'PUT') return this.writeSkill('edit', request, name);
-      if (request.method === 'DELETE') return this.writeSkill('delete', request, name);
-    }
+      return this.proxySelectedAgent(request, '/work');
     if (
       request.method === 'POST' &&
       url.pathname.startsWith('/messages/') &&
       url.pathname.endsWith('/cancel')
     ) {
       const id = decodeURIComponent(url.pathname.slice('/messages/'.length, -'/cancel'.length));
-      return (
-        (await this.proxySelectedAgent(request, `/messages/${encodeURIComponent(id)}/cancel`)) ??
-        this.cancelTurn(id, request)
-      );
+      return this.proxySelectedAgent(request, `/messages/${encodeURIComponent(id)}/cancel`);
     }
     if (url.pathname === '/presence') {
       if (request.method === 'POST') return this.touchPresence(request);
       if (request.method === 'DELETE') return this.leavePresence(request);
     }
     if (request.method === 'PUT' && url.pathname === '/settings')
-      return (await this.proxySelectedAgent(request, '/settings')) ?? this.updateSettings(request);
-    if (url.pathname === '/files') {
-      const proxied = await this.proxySelectedAgent(request, '/files');
-      if (proxied) return proxied;
-      if (request.method === 'GET') return Response.json({ files: await this.files() });
-      if (request.method === 'POST') return this.addFile(request);
-    }
-    if (url.pathname.startsWith('/files/') && request.method === 'DELETE') {
-      const proxied = await this.proxySelectedAgent(request, url.pathname);
-      return proxied ?? this.deleteFile(decodeURIComponent(url.pathname.slice('/files/'.length)));
-    }
-    if (url.pathname === '/agent-state') {
-      const proxied = await this.proxySelectedAgent(request, '/agent-state');
-      if (proxied) return proxied;
-      if (request.method === 'GET') return Response.json({ entries: await this.agentState() });
-      if (request.method === 'POST') return this.createAgentState(request);
-    }
-    if (url.pathname.startsWith('/agent-state/')) {
-      const id = decodeURIComponent(url.pathname.slice('/agent-state/'.length));
-      const proxied = await this.proxySelectedAgent(request, url.pathname);
-      if (proxied) return proxied;
-      if (request.method === 'PUT') return this.updateAgentState(id, request);
-      if (request.method === 'DELETE') return this.deleteAgentState(id);
-    }
-    if (url.pathname === '/jobs') {
-      const proxied = await this.proxySelectedAgent(request, '/jobs');
-      if (proxied) return proxied;
-      if (request.method === 'GET') return Response.json({ jobs: await this.jobs() });
-      if (request.method === 'POST') return this.createJob(request);
-    }
-    if (url.pathname.startsWith('/jobs/')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      const id = decodeURIComponent(parts[1] ?? '');
-      const proxied = await this.proxySelectedAgent(request, url.pathname);
-      if (proxied) return proxied;
-      if (request.method === 'PUT' && parts.length === 2) return this.updateJob(id, request);
-      if (request.method === 'DELETE' && parts.length === 2) return this.deleteJob(id);
-      if (request.method === 'POST' && parts[2] === 'pause')
-        return this.setJobPaused(id, true, request);
-      if (request.method === 'POST' && parts[2] === 'resume')
-        return this.setJobPaused(id, false, request);
-    }
+      return this.proxySelectedAgent(request, '/settings');
+    if (
+      ['/skills', '/files', '/agent-state', '/jobs'].some(
+        (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
+      )
+    )
+      return this.proxySelectedAgent(request, url.pathname);
     if (url.pathname === '/push-subscriptions') {
       if (request.method === 'POST') return this.savePushSubscription(request);
       if (request.method === 'DELETE') return this.deletePushSubscription(request);
@@ -2084,6 +2026,12 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       occurredAt: new Date().toISOString(),
     };
     await this.state.storage.put(`communication-event:${value.occurredAt}:${value.id}`, value);
+    if (value.type !== 'communication.sent')
+      await this.emitFleetEvent('agent.communication', value.toAgentId, {
+        fromAgentId: value.fromAgentId,
+        result: value.type,
+        action: value.action,
+      });
     const events = await this.state.storage.list<CommunicationEvent>({
       prefix: 'communication-event:',
     });
@@ -2166,7 +2114,12 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
           {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ fromAgentId: input.fromAgentId, message: input.message }),
+            body: JSON.stringify({
+              fromAgentId: input.fromAgentId,
+              fromAgentName: tree.nodes.find((node) => node.id === input.fromAgentId)?.title,
+              message: input.message,
+              reply: true,
+            }),
           },
         );
         if (!response.ok) throw new Error('message delivery failed');
@@ -2300,6 +2253,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         return event;
       })
       .then(async (event) => {
+        this.fleetOperationsCache = null;
         await this.broadcastFleetEvent(event);
         const events = [...(await this.state.storage.list({ prefix: 'fleet-event:' })).keys()];
         const receipts = [...(await this.state.storage.list({ prefix: 'fleet-receipt:' })).keys()];
@@ -2930,52 +2884,6 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     return Response.json({ online });
   }
 
-  private async updateSettings(request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as {
-      strategyId?: string;
-      modelId?: string;
-      thinkingLevel?: string;
-      systemPrompt?: string;
-      agentAvatarSeed?: string;
-      updatedBy?: string;
-    };
-    if (body.strategyId !== undefined && !isStrategyId(body.strategyId)) {
-      return Response.json({ error: 'invalid strategy' }, { status: 400 });
-    }
-    if (body.modelId !== undefined && !isChatModelId(body.modelId)) {
-      return Response.json({ error: 'invalid model' }, { status: 400 });
-    }
-    if (body.thinkingLevel !== undefined && !isThinkingLevel(body.thinkingLevel)) {
-      return Response.json({ error: 'invalid thinking level' }, { status: 400 });
-    }
-    const systemPrompt =
-      body.systemPrompt === undefined ? undefined : normalizeSystemPrompt(body.systemPrompt);
-    if (body.systemPrompt !== undefined && !systemPrompt) {
-      return Response.json({ error: 'invalid system prompt' }, { status: 400 });
-    }
-    const agentAvatarSeed = body.agentAvatarSeed?.trim();
-    if (body.agentAvatarSeed !== undefined && (!agentAvatarSeed || agentAvatarSeed.length > 128)) {
-      return Response.json({ error: 'invalid agent avatar' }, { status: 400 });
-    }
-    const threadId = new URL(request.url).searchParams.get('threadId');
-    const current = await this.settings(threadId ?? undefined);
-    const settings: RoomSettings = {
-      strategyId: body.strategyId ?? current.strategyId,
-      modelId: body.modelId ?? current.modelId,
-      thinkingLevel: body.thinkingLevel ?? current.thinkingLevel,
-      systemPrompt: systemPrompt ?? current.systemPrompt,
-      agentAvatarSeed: agentAvatarSeed ?? current.agentAvatarSeed,
-      version: current.version + 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: body.updatedBy?.trim() || undefined,
-    };
-    await this.state.storage.put(
-      threadId ? `agent-context:${threadId}:settings` : 'settings',
-      settings,
-    );
-    this.ensureDrain();
-    return Response.json({ settings });
-  }
 
   private ensureDrain(): void {
     if (this.drainPromise) return;
@@ -3160,127 +3068,11 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     }
   }
 
-  private async cancelTurn(id: string, request: Request): Promise<Response> {
-    const messages = await this.messages();
-    const target = messages.find((message) => message.id === id);
-    if (!target) return Response.json({ error: 'message not found' }, { status: 404 });
-    const userId = target.role === 'assistant' ? target.replyTo : target.id;
-    const responseId = target.role === 'assistant' ? target.id : `agent-${target.id}`;
-    if (!userId) return Response.json({ error: 'message not found' }, { status: 404 });
-    const user = messages.find((message) => message.id === userId);
-    const response = messages.find((message) => message.id === responseId);
-    if (!user || (user.status !== 'queued' && user.status !== 'active')) {
-      return Response.json({ error: 'response is not cancellable' }, { status: 409 });
-    }
-    try {
-      await this.pi.abort({ operationId: userId });
-    } catch (error) {
-      console.error('chat-ax pi abort failed', userId, error);
-    }
-    const queue = await this.queue();
-    await this.state.storage.put({
-      messages: messages.map((message) => {
-        if (message.id === userId) return { ...message, status: 'error' as const };
-        if (message.id === responseId) {
-          return {
-            ...message,
-            status: 'error' as const,
-            text: message.text || 'Response cancelled.',
-            tools: (message.tools ?? []).map((tool) =>
-              tool.status === 'running'
-                ? { ...tool, status: 'error' as const, completedAt: new Date().toISOString() }
-                : tool,
-            ),
-          };
-        }
-        return message;
-      }),
-      queue: queue.filter((queuedId) => queuedId !== userId),
-    });
-    if (response) await this.state.storage.delete(`turn-progress:${response.id}`);
-    this.ensureDrain();
-    return Response.json(await this.snapshot(this.actorFromUrl(request)));
-  }
 
-  private async clearHistory(request: Request): Promise<Response> {
-    await this.resetHistory();
-    await this.state.storage.put({ messages: [], queue: [] });
-    return Response.json(await this.snapshot(this.actorFromUrl(request)));
-  }
 
-  private async compactHistory(request: Request): Promise<Response> {
-    const retained = (await this.messages())
-      .filter((message) => message.status === 'complete' || message.status === 'error')
-      .slice(-20);
-    await this.resetHistory();
-    await this.state.storage.put({ messages: retained, queue: [] });
-    return Response.json(await this.snapshot(this.actorFromUrl(request)));
-  }
 
-  private async compactPi(request: Request): Promise<Response> {
-    await this.pi.compact(
-      'Preserve durable room decisions, active work, file references, and unresolved questions. Omit private tool output and internal reasoning.',
-    );
-    return Response.json({ accepted: true });
-  }
 
-  private async resetHistory(): Promise<void> {
-    for (const message of await this.messages()) {
-      if (message.status === 'queued' || message.status === 'active') {
-        try {
-          await this.pi.abort({
-            operationId:
-              message.role === 'assistant' ? (message.replyTo ?? message.id) : message.id,
-          });
-        } catch (error) {
-          console.error('chat-ax pi abort failed', message.id, error);
-        }
-      }
-      if (message.role === 'assistant')
-        await this.state.storage.delete(`turn-progress:${message.id}`);
-    }
-    try {
-      await this.pi.clear();
-    } catch (error) {
-      console.error('chat-ax pi history reset failed', error);
-    }
-  }
 
-  private async writeSkill(
-    mode: 'create' | 'edit' | 'delete',
-    request: Request,
-    nameFromPath?: string,
-  ): Promise<Response> {
-    const actor = this.actorFromUrl(request);
-    const body =
-      request.method === 'DELETE'
-        ? {}
-        : await parseBoundedJson(
-            request,
-            z.object({
-              name: z.string().max(200).optional(),
-              description: z.string().max(2_000).optional(),
-              body: z.string().max(32_000).optional(),
-            }),
-          ).catch(() => ({}));
-    const execution = await executeRoomSkillWrite({
-      storage: this.state.storage,
-      actorId: actor.id || 'room-agent',
-      roomId: 'main',
-      mode,
-      name: nameFromPath || body.name || '',
-      description: body.description,
-      body: body.body,
-    });
-    await this.recordCapability(execution);
-    if (!execution.result) {
-      return Response.json(
-        { error: execution.receipt.denialReason ?? 'Skill write denied' },
-        { status: 400 },
-      );
-    }
-    return Response.json({ skill: execution.result, skills: await this.roomSkills() });
-  }
 
   private async finishTurns(results: TurnResult[]): Promise<void> {
     const ids = new Set(results.map((result) => result.message.id));
@@ -3401,255 +3193,16 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       .join('\n\n');
   }
 
-  private base64(bytes: Uint8Array): string {
-    let value = '';
-    for (let offset = 0; offset < bytes.length; offset += 32_768) {
-      value += String.fromCharCode(...bytes.slice(offset, offset + 32_768));
-    }
-    return btoa(value);
-  }
 
-  private async addFile(request: Request): Promise<Response> {
-    const body = z
-      .custom<Partial<SharedFile>>((value) => typeof value === 'object' && value !== null)
-      .parse(await readBoundedJson(request));
-    if (
-      !body.id ||
-      !body.name ||
-      !body.mime ||
-      !body.objectKey ||
-      !body.kind ||
-      !body.createdAt ||
-      !body.createdBy ||
-      typeof body.bytes !== 'number' ||
-      !Number.isInteger(body.bytes)
-    ) {
-      return Response.json({ error: 'invalid file metadata' }, { status: 400 });
-    }
-    const file: SharedFile = {
-      id: body.id,
-      name: body.name,
-      mime: body.mime,
-      bytes: body.bytes,
-      objectKey: body.objectKey,
-      kind: body.kind,
-      createdAt: body.createdAt,
-      createdBy: body.createdBy,
-    };
-    const files = await this.files();
-    if (files.length >= maximumSharedFiles)
-      return Response.json({ error: 'shared file limit reached' }, { status: 409 });
-    await this.state.storage.put('files', [...files.filter((item) => item.id !== file.id), file]);
-    return Response.json({ file }, { status: 201 });
-  }
 
-  private async deleteFile(id: string): Promise<Response> {
-    const files = await this.files();
-    const file = files.find((item) => item.id === id);
-    if (!file) return Response.json({ error: 'file not found' }, { status: 404 });
-    const inFlight = (await this.messages()).some(
-      (message) =>
-        (message.status === 'queued' || message.status === 'active') &&
-        message.attachmentIds?.includes(id),
-    );
-    if (inFlight)
-      return Response.json({ error: 'file is in use by an active turn' }, { status: 409 });
-    await this.state.storage.put(
-      'files',
-      files.filter((item) => item.id !== id),
-    );
-    await this.env.FILES.delete(file.objectKey);
-    return Response.json({ deleted: id });
-  }
 
-  private async createAgentState(request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as {
-      key?: string;
-      value?: string;
-      actorId?: string;
-    };
-    const key = normalizeStateKey(body.key ?? '');
-    const value = normalizeStateValue(body.value ?? '');
-    const actorId = body.actorId?.trim() ?? '';
-    if (!key || !value || !actorId)
-      return Response.json({ error: 'invalid agent state' }, { status: 400 });
-    const entries = await this.agentState();
-    if (entries.length >= maximumAgentStateEntries)
-      return Response.json({ error: 'agent state limit reached' }, { status: 409 });
-    if (entries.some((entry) => entry.key === key))
-      return Response.json({ error: 'state key already exists' }, { status: 409 });
-    const now = new Date().toISOString();
-    const entry: AgentStateEntry = {
-      id: crypto.randomUUID(),
-      key,
-      value,
-      createdAt: now,
-      createdBy: actorId,
-      updatedAt: now,
-      updatedBy: actorId,
-    };
-    await this.state.storage.put('agent-state', [...entries, entry]);
-    return Response.json({ entry }, { status: 201 });
-  }
 
-  private async updateAgentState(id: string, request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as {
-      key?: string;
-      value?: string;
-      actorId?: string;
-    };
-    const key = normalizeStateKey(body.key ?? '');
-    const value = normalizeStateValue(body.value ?? '');
-    const actorId = body.actorId?.trim() ?? '';
-    const entries = await this.agentState();
-    const current = entries.find((entry) => entry.id === id);
-    if (!current) return Response.json({ error: 'state entry not found' }, { status: 404 });
-    if (!key || !value || !actorId)
-      return Response.json({ error: 'invalid agent state' }, { status: 400 });
-    if (entries.some((entry) => entry.id !== id && entry.key === key))
-      return Response.json({ error: 'state key already exists' }, { status: 409 });
-    const entry: AgentStateEntry = {
-      ...current,
-      key,
-      value,
-      updatedAt: new Date().toISOString(),
-      updatedBy: actorId,
-    };
-    await this.state.storage.put(
-      'agent-state',
-      entries.map((candidate) => (candidate.id === id ? entry : candidate)),
-    );
-    return Response.json({ entry });
-  }
 
-  private async deleteAgentState(id: string): Promise<Response> {
-    const entries = await this.agentState();
-    if (!entries.some((entry) => entry.id === id))
-      return Response.json({ error: 'state entry not found' }, { status: 404 });
-    await this.state.storage.put(
-      'agent-state',
-      entries.filter((entry) => entry.id !== id),
-    );
-    return Response.json({ deleted: id });
-  }
 
-  private minimumJobInterval(): number {
-    return this.env.ENVIRONMENT === 'dev' ? 1 : 60;
-  }
 
-  private async createJob(request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as {
-      name?: string;
-      prompt?: string;
-      intervalSeconds?: number;
-      maxRuns?: number | null;
-      actorId?: string;
-    };
-    const input = normalizeJobInput(body, this.minimumJobInterval());
-    const actorId = body.actorId?.trim() ?? '';
-    if (!input || !actorId) return Response.json({ error: 'invalid job' }, { status: 400 });
-    const existingJobs = await this.jobs();
-    if (existingJobs.length >= maximumRecurringJobs)
-      return Response.json({ error: 'recurring job limit reached' }, { status: 409 });
-    const now = new Date();
-    const job: RecurringJob = {
-      id: crypto.randomUUID(),
-      ...input,
-      runCount: 0,
-      status: 'active',
-      nextRunAt: new Date(now.getTime() + input.intervalSeconds * 1000).toISOString(),
-      lastRunAt: null,
-      createdAt: now.toISOString(),
-      createdBy: actorId,
-      updatedAt: now.toISOString(),
-      updatedBy: actorId,
-    };
-    await this.state.storage.put('jobs', [...existingJobs, job]);
-    await this.scheduleNextAlarm();
-    return Response.json({ job }, { status: 201 });
-  }
 
-  private async updateJob(id: string, request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as {
-      name?: string;
-      prompt?: string;
-      intervalSeconds?: number;
-      maxRuns?: number | null;
-      actorId?: string;
-    };
-    const jobs = await this.jobs();
-    const current = jobs.find((job) => job.id === id);
-    if (!current) return Response.json({ error: 'job not found' }, { status: 404 });
-    const input = normalizeJobInput(
-      {
-        name: body.name ?? current.name,
-        prompt: body.prompt ?? current.prompt,
-        intervalSeconds: body.intervalSeconds ?? current.intervalSeconds,
-        maxRuns: body.maxRuns === undefined ? current.maxRuns : body.maxRuns,
-      },
-      this.minimumJobInterval(),
-    );
-    const actorId = body.actorId?.trim() ?? '';
-    if (!input || !actorId) return Response.json({ error: 'invalid job' }, { status: 400 });
-    const now = new Date();
-    const complete = input.maxRuns !== null && current.runCount >= input.maxRuns;
-    const job: RecurringJob = {
-      ...current,
-      ...input,
-      status: complete ? 'complete' : current.status,
-      nextRunAt: complete
-        ? null
-        : current.status === 'active'
-          ? new Date(now.getTime() + input.intervalSeconds * 1000).toISOString()
-          : current.nextRunAt,
-      updatedAt: now.toISOString(),
-      updatedBy: actorId,
-    };
-    await this.state.storage.put(
-      'jobs',
-      jobs.map((candidate) => (candidate.id === id ? job : candidate)),
-    );
-    await this.scheduleNextAlarm();
-    return Response.json({ job });
-  }
 
-  private async setJobPaused(id: string, paused: boolean, request: Request): Promise<Response> {
-    const body = (await readBoundedJson(request)) as { actorId?: string };
-    const actorId = body.actorId?.trim() ?? '';
-    const jobs = await this.jobs();
-    const current = jobs.find((job) => job.id === id);
-    if (!current) return Response.json({ error: 'job not found' }, { status: 404 });
-    if (!actorId || current.status === 'complete')
-      return Response.json({ error: 'job cannot change status' }, { status: 409 });
-    const now = new Date();
-    const job: RecurringJob = {
-      ...current,
-      status: paused ? 'paused' : 'active',
-      nextRunAt: paused
-        ? null
-        : new Date(now.getTime() + current.intervalSeconds * 1000).toISOString(),
-      updatedAt: now.toISOString(),
-      updatedBy: actorId,
-    };
-    await this.state.storage.put(
-      'jobs',
-      jobs.map((candidate) => (candidate.id === id ? job : candidate)),
-    );
-    await this.scheduleNextAlarm();
-    return Response.json({ job });
-  }
 
-  private async deleteJob(id: string): Promise<Response> {
-    const jobs = await this.jobs();
-    if (!jobs.some((job) => job.id === id))
-      return Response.json({ error: 'job not found' }, { status: 404 });
-    await this.state.storage.put(
-      'jobs',
-      jobs.filter((job) => job.id !== id),
-    );
-    await this.scheduleNextAlarm();
-    return Response.json({ deleted: id });
-  }
 
   private async savePushSubscription(request: Request): Promise<Response> {
     const body = (await readBoundedJson(request)) as {

@@ -101,7 +101,9 @@ const resourceMutationSchema = z.object({ value: jsonValueSchema });
 const communicationInboxSchema = z
   .object({
     fromAgentId: z.string().trim().min(1).max(200),
+    fromAgentName: z.string().trim().min(1).max(200).optional(),
     message: z.string().trim().min(1).max(8_000),
+    reply: z.boolean().default(false),
   })
   .strict();
 const submittedMessageSchema = z.object({
@@ -1810,14 +1812,24 @@ export class AgentDO extends DurableObject<AgentEnv> {
         id: crypto.randomUUID(),
         role: 'user',
         authorId: input.fromAgentId,
-        authorName: input.fromAgentId,
+        authorName: input.fromAgentName ?? input.fromAgentId,
         text: input.message,
         createdAt: new Date().toISOString(),
-        status: 'complete',
+        status: input.reply ? 'queued' : 'complete',
+        source: 'agent',
       };
-      const messages = await this.messages();
-      await this.ctx.storage.put('resource:messages', [...messages, message].slice(-200));
-      return Response.json({ messageId: message.id }, { status: 201 });
+      const accepted = await this.ctx.storage.transaction(async (transaction) => {
+        const messages = (await transaction.get<ChatMessage[]>('resource:messages')) ?? [];
+        await transaction.put('resource:messages', [...messages, message].slice(-200));
+        if (!input.reply) return true;
+        const queue = (await transaction.get<string[]>('message-queue')) ?? [];
+        if (queue.length >= maximumMessageQueueDepth) return false;
+        await transaction.put('message-queue', [...queue, message.id]);
+        return true;
+      });
+      if (!accepted) return Response.json({ error: 'message queue capacity reached' }, { status: 429 });
+      if (input.reply) this.ensureDrain();
+      return Response.json({ messageId: message.id, queued: input.reply }, { status: 201 });
     }
     if (request.method === 'POST' && url.pathname === '/messages') {
       if (!(await this.ctx.storage.get('identity')))
