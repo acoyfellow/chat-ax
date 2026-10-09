@@ -1,0 +1,21 @@
+README.md
+  s_4f3d73861137de::t_69070f5f106d3f 5-7,20
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_ad9de3759f3541 25-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "766ef2cf81ee6c670a30c64982a5d34a16b10b6d",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
