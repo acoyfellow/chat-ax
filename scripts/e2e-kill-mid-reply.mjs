@@ -24,7 +24,7 @@ const persistence = mkdtempSync(join(tmpdir(), 'chat-ax-kill-'));
 let server;
 
 function start() {
-  server = spawn('npx', ['wrangler', 'dev', '--config', 'wrangler.test.jsonc', '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', persistence], { stdio: ['ignore', 'ignore', 'pipe'], detached: true });
+  server = spawn('npx', ['wrangler', 'dev', '--config', 'wrangler.test.jsonc', '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', persistence], { stdio: ['ignore', 'ignore', 'pipe'], detached: true, env: { ...process.env, WRANGLER_REGISTRY_PATH: mkdtempSync(join(tmpdir(), 'chat-ax-registry-')) } });
   return waitUntilServing();
 }
 

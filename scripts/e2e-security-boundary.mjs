@@ -61,7 +61,9 @@ const inspectorPort = await new Promise((resolve) => {
 });
 const base = `http://127.0.0.1:${port}`;
 const persistence = mkdtempSync(join(tmpdir(), 'chat-ax-boundary-'));
-const server = spawn('npx', ['wrangler', 'dev', '--config', 'wrangler.test.jsonc', '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', persistence, '--var', `MCP_SERVER_URL:${mcpUrl}`, '--var', 'MCP_CONNECTOR_NAME:Boundary fixture'], { stdio: ['ignore', process.env.BOUNDARY_LOG ? 'inherit' : 'ignore', process.env.BOUNDARY_LOG ? 'inherit' : 'ignore'], detached: true });
+const server = spawn('npx', ['wrangler', 'dev', '--config', 'wrangler.test.jsonc', '--port', String(port), '--inspector-port', String(inspectorPort), '--persist-to', persistence, '--var', `MCP_SERVER_URL:${mcpUrl}`, '--var', 'MCP_CONNECTOR_NAME:Boundary fixture'], { stdio: ['ignore', process.env.BOUNDARY_LOG ? 'inherit' : 'pipe', process.env.BOUNDARY_LOG ? 'inherit' : 'pipe'], detached: true, env: { ...process.env, WRANGLER_REGISTRY_PATH: mkdtempSync(join(tmpdir(), 'chat-ax-registry-')) } });
+server.stdout?.resume();
+server.stderr?.resume();
 
 const as = (person) => ({ 'x-dev-user-email': person.email, 'x-dev-user-name': person.name });
 const api = async (person, path, init = {}) => {
@@ -135,7 +137,14 @@ try {
   record('An agent tells another agent to call MCP', 'no call; the tool refuses a turn no person sent', `${callsSince(mark).length} calls; tool ${helperTool?.status ?? 'not attempted'}: ${JSON.stringify((helperTool?.result ?? '').slice(0, 80))}`, callsSince(mark).length === 0 && helperTool?.status === 'error');
 
   const viaJordan = (argumentsJson = '{}') => `NATIVE_TOOL_PROOF call_mcp ${JSON.stringify({ name: 'whoami', argumentsJson, connectorOwnerEmail: people.jordan.email })}`;
-  const approvalsFor = async (person) => (await api(person, `/api/messages?threadId=${encodeURIComponent(agentId)}`)).body;
+  const approvalsFor = async (person) => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const snapshot = await api(person, `/api/messages?threadId=${encodeURIComponent(agentId)}`);
+      if (snapshot.status === 200 && snapshot.body) return snapshot.body;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error(`could not read the conversation as ${person.email}`);
+  };
   const latestApproval = async () => (await approvalsFor(people.jordan)).mcpApprovals.filter((item) => item.requesterEmail === people.sam.email).sort((left, right) => left.expiresAt - right.expiresAt).at(-1);
   const logLines = async () => (await approvalsFor(people.sam)).messages.filter((message) => message.authorName === 'Approvals').map((message) => message.text);
 

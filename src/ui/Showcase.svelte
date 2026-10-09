@@ -14,7 +14,7 @@
   type Caption = { start: number; end: number; text: string };
 
   const captions: Caption[] = [
-    { start: 0.6, end: 3.8, text: 'Meet your agent.' },
+    { start: 1.8, end: 3.8, text: 'Meet your agent.' },
     { start: 4.0, end: 8.4, text: 'Your whole team talks to the same one.' },
     { start: 8.6, end: 12.4, text: 'It has its own skills, files, memory and jobs.' },
     { start: 12.6, end: 16.4, text: 'It can change them itself.' },
@@ -93,7 +93,7 @@
   const caption = $derived(captions.find((item) => time >= item.start && time < item.end));
   const captionOpacity = $derived(caption ? during(caption.start, caption.end) : 0);
   const solo = $derived(time < 20.8);
-  const agentScale = $derived(pop(progress(0.2, 1.0)) * (1 - 0.3 * ease(progress(8.4, 0.6))) * (1 - ease(progress(20.2, 0.5))));
+  const agentScale = $derived(pop(progress(1.5, 0.8)) * (1 - 0.3 * ease(progress(8.4, 0.6))) * (1 - ease(progress(20.2, 0.5))));
   const agentShift = $derived(-220 * ease(progress(8.4, 0.6)) * (1 - ease(progress(16.2, 0.6))));
   const agentLift = $derived(-130 * ease(progress(16.2, 0.6)));
   const killed = $derived(time > 18.6 && time < 19.6);
@@ -107,7 +107,7 @@
   const approval = $derived(approvalScene(time + 2.8));
   const webOpacity = $derived(during(28.6, 36.6, 0.5));
   const terminal = $derived(during(36.6, 40.4));
-  const end = $derived(ease(progress(40.4, 0.8)));
+  const end = $derived(Math.max(1 - ease(progress(0.9, 0.6)), ease(progress(40.4, 0.8))));
   const connector = { configured: true, id: 'mcp', name: 'GitLab', connected: true };
   const samChat = $derived({ state: approval.sam, paletteOpen: false, paletteTab: 'account', theme: 'dark', followLatest: true });
   const jordanChat = $derived({ state: approval.jordan, paletteOpen: false, paletteTab: 'account', theme: 'dark', followLatest: true });
@@ -250,7 +250,7 @@
 
   {#if end > 0.01}
     <div class="end" style:opacity={end}>
-      <AgentAvatar hash="chat-ax-lead" size={120} />
+      <AgentAvatar hash="chat-ax-lead" size={120} animate={false} />
       <h1>Chat AX</h1>
       <p>github.com/acoyfellow/chat-ax</p>
     </div>

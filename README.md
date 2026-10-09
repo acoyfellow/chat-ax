@@ -19,9 +19,14 @@ It runs on the Workers free plan. No database to run and no API keys to paste; t
 
 ![One agent: its own space, and replies that survive a restart](docs/images/one-agent.png)
 
-## Deploy
+## Install
 
-You need a Cloudflare account (the free plan works) and Node 20 or later.
+It takes about five minutes. You need:
+
+- A Cloudflare account. The free plan works. [Sign up here](https://dash.cloudflare.com/sign-up).
+- Node 20 or later. Check with `node --version`.
+
+Then run these three commands:
 
 ```sh
 git clone https://github.com/acoyfellow/chat-ax && cd chat-ax
@@ -29,15 +34,35 @@ npm install
 npm run setup
 ```
 
-Setup signs you in to Cloudflare, asks who may use the app (emails or `@your-domain.com`), and then:
+`npm run setup` asks you two things:
 
-1. Deploys the Worker to `chat-ax.<your-subdomain>.workers.dev`.
-2. Puts that URL behind a [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) application that admits only those people. Access is free for up to 50 users, and guests sign in with a one-time code sent to their email.
-3. Saves the application's issuer and audience on the Worker as secrets. The Worker serves nobody until they exist and accepts only tokens from that application.
+1. **Sign in to Cloudflare.** A browser window opens. Approve it and come back.
+2. **Who may use it.** Type emails, a whole domain, or both, for example `you@gmail.com,@acme.com`.
 
-Share the URL. Everyone who can sign in joins the same room. Run `npm run setup` again to deploy updates or change who may sign in. It reuses what already exists. Pass `--allow`, `--account` and `--name` to skip the questions.
+Then it deploys and prints your URL, like `https://chat-ax.<you>.workers.dev`. Open it, sign in with one of the emails you allowed, and you're in. Send that URL to your team.
 
-> **Why `workers_dev` is `false` in `wrangler.jsonc`:** so a plain `wrangler deploy` never publishes an unprotected public URL. Setup turns `workers.dev` on only for its own deploy, then puts it behind Access.
+Behind the scenes, setup:
+
+- Deploys the Worker to your account.
+- Puts it behind [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/), so only the people you allowed get in. Access is free for up to 50 people, and guests sign in with a code sent to their email.
+- Saves the Access details on the Worker. Until that's done, the Worker refuses everyone.
+
+**To update or change who can sign in,** pull the latest code and run `npm run setup` again. It reuses what already exists.
+
+**To skip the questions,** pass them in: `npm run setup -- --allow you@gmail.com --account <account-id>`.
+
+### Why there's no "Deploy to Cloudflare" button
+
+The button can deploy the code, but it can't set up Access. That would leave a public URL that anyone could use, so setup does both in one step instead.
+
+### If something goes wrong
+
+- **The browser sign-in didn't finish:** run `npx cf auth login`, then `npm run setup` again.
+- **`wrangler deploy` asked you to sign in:** run `npx wrangler login`, then `npm run setup` again.
+- **You have more than one Cloudflare account:** setup asks which one. Or pass `--account <account-id>`.
+- **The URL says you're not allowed in:** sign in with an email you gave setup, or run setup again and add yours.
+
+> `workers_dev` is `false` in `wrangler.jsonc` on purpose. A plain `wrangler deploy` will never publish an unprotected URL. Setup turns it on only for its own deploy, then puts it behind Access.
 
 ## Try it locally
 

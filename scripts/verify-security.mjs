@@ -34,6 +34,7 @@ function run(label, command) {
     ({ status, output } = attempt());
   }
   const ok = status === 0;
+  if (!ok) writeFileSync(`receipts/failed-${results.length + 1}.log`, output);
   results.push({ label, command, ok, retriedAfterDevServerCrash, ms: Date.now() - started, tail: output.trim().split('\n').slice(-6).join('\n') });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}  (${((Date.now() - started) / 1000).toFixed(1)}s)\n      ${command}`);
   if (!ok) console.log(output.trim().split('\n').slice(-15).map((line) => `      ${line}`).join('\n'));
