@@ -1,0 +1,29 @@
+scripts/e2e-agent-handoff-live.mjs
+  s_4f3d73861137de::t_b221ea2282b9cc 1-50
+src/agent-do.ts
+  s_4f3d73861137de::t_3eceaf42320ab3 104,106,1815,1818-1819,1821-1832
+src/room.ts
+  s_4f3d73861137de::t_3810ef1dd72de9 132,206,2088-2093,2176-2181,2315
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_9696d25cb733b3 4,143-149,421,424,448,451-452,473,480
+src/ui/relative-time.test.ts
+  s_4f3d73861137de::t_83e5adb46706ec 1-15
+src/ui/relative-time.ts
+  s_4f3d73861137de::t_d7d1a90525957e 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8b0edb81bfe77d0ddc873f65599e1f34f34938e6",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
