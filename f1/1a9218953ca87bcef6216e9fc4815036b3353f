@@ -1,0 +1,21 @@
+README.md
+  s_4f3d73861137de::t_7a728139ea3156 5-7,20
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_49377e2bdaf886 25-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f11a9218953ca87bcef6216e9fc4815036b3353f",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}
