@@ -911,6 +911,7 @@
                 <section class="connector-approval" aria-label="Connector action approval" data-approval-id={approval.id}>
                   <strong>{approval.toolName}</strong>
                   <pre>{approval.argumentsJson}</pre>
+                  <p class="approval-scope">Approving this runs exactly these arguments, once. Anything different needs a new approval. Fingerprint <code>{approval.argumentsDigest.slice(0, 12)}</code>.</p>
                   <p>Status: {approvalStatusLabel(approval.status)}. Runs once, as {approval.connectorOwnerEmail}. Everyone here sees the result.</p>
                   {#if approval.status === 'outcome-unknown'}
                     <p>The action may already have happened. Do not repeat it. Check the external service before requesting another action.</p>

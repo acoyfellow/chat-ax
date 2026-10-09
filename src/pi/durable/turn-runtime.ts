@@ -14,6 +14,7 @@ import {
 } from '@earendil-works/pi-durable';
 import { SqliteStorage } from '@earendil-works/pi-durable/storage/sqlite';
 import { durableObjectSqliteDatabase, type SqlStorage } from './do-sqlite-database';
+import { toolAttributes, traced, type TraceTracer } from '../../agent-tracing';
 
 const context = BACKGROUND_CONTEXT;
 
@@ -50,6 +51,7 @@ export type TurnRuntimeOptions = {
   thinkingLevel?: ModelThinkingLevel;
   instructions: () => Promise<string>;
   tools: () => TurnTool[];
+  tracer?: TraceTracer;
 };
 
 function textOf(entry: EntryRecord | undefined): string {
@@ -179,9 +181,11 @@ export class DurableTurnRuntime {
       execute: async (args, api, callContext) => {
         const operationId = this.activeOperation ?? `recovered:${api.conversationId}`;
         const signal = callContext.abortSignal;
-        const work = tool.execute(args as never, { operationId, invocationId: api.callId, signal });
-        const result = signal ? await Promise.race([work, aborted(signal)]) : await work;
-        return { content: result.content, isError: result.isError ?? false };
+        return traced(this.options.tracer, `execute_tool ${tool.name}`, toolAttributes(tool.name, api.callId, args), async () => {
+          const work = tool.execute(args as never, { operationId, invocationId: api.callId, signal });
+          const result = signal ? await Promise.race([work, aborted(signal)]) : await work;
+          return { content: result.content, isError: result.isError ?? false };
+        });
       },
     }));
   }

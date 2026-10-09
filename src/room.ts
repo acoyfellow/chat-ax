@@ -2672,6 +2672,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
         requesterEmail: v.pipe(v.string(), v.email(), v.maxLength(320)),
         ownerEmail: v.pipe(v.string(), v.email(), v.maxLength(320)),
         toolName: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+        argumentsJson: v.optional(v.pipe(v.string(), v.maxLength(300)), ''),
       }),
       await readBoundedJson(request),
     );
@@ -2681,7 +2682,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       {
         source: 'agent',
         title: `${input.requesterName} wants to use your connector`,
-        body: `${input.toolName} · approve or deny`,
+        body: input.argumentsJson ? `${input.toolName} ${input.argumentsJson}` : `${input.toolName} · approve or deny`,
         href: `/?thread=${encodeURIComponent(input.agentId)}&approval=${encodeURIComponent(input.approvalId)}`,
         approvalId: input.approvalId,
         agentId: input.agentId,

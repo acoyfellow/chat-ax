@@ -1,6 +1,7 @@
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
-import { DurableObject } from 'cloudflare:workers';
+import { DurableObject, tracing } from 'cloudflare:workers';
+import { agentTraceName, type AgentTraceIdentity, approvalAttributes, type ApprovalTraceStage, chatSpanFinished, identityAttributes, traced } from './agent-tracing';
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from '@earendil-works/pi-ai/providers/faux';
 import { createModels } from '@earendil-works/pi-ai/models';
 import { chatGatewayProvider } from './chat-model-provider';
@@ -45,6 +46,7 @@ import {
   argumentsDigest,
   canonicalArguments,
   decisionRefusal,
+  tamperRefusal,
 } from './connector-approvals';
 import {
   type AgentStateEntry,
@@ -298,10 +300,43 @@ function gatewayProviders(env: AgentEnv): Provider[] {
   return [workersAI(env.AI, { gateway: workersAIGatewayId(env), models: workersAIModels }), chatGatewayProvider(env.AI, gateway)];
 }
 
+function tracedProvider(provider: Provider, identity: () => AgentTraceIdentity | undefined): Provider {
+  const chatSpan = (modelId: string) => {
+    const span = tracing.startSpan(`chat ${modelId}`);
+    const current = identity();
+    span.setAttributes({
+      ...(current ? identityAttributes('chat', current) : { 'gen_ai.operation.name': 'chat' }),
+      'gen_ai.provider.name': provider.id,
+      'gen_ai.request.model': modelId,
+    });
+    return span;
+  };
+  const watch = <S extends { result(): Promise<unknown> }>(stream: S, modelId: string): S => {
+    const span = chatSpan(modelId);
+    stream.result().then(
+      (result) => chatSpanFinished(span, chatResultSchema.safeParse(result).data),
+      () => chatSpanFinished(span, { stopReason: 'error' }),
+    );
+    return stream;
+  };
+  return {
+    ...provider,
+    getModels: () => provider.getModels(),
+    stream: (model, context, options) => watch(provider.stream(model, context, options), model.id),
+    streamSimple: (model, context, options) => watch(provider.streamSimple(model, context, options), model.id),
+  };
+}
+
+const chatResultSchema = z.object({
+  usage: z.object({ input: z.number(), output: z.number() }).optional(),
+  stopReason: z.string().optional(),
+});
+
 export class AgentDO extends DurableObject<AgentEnv> {
   private readonly pi: DurableTurnRuntime;
   private readonly faux: ReturnType<typeof fauxProvider> | null;
   private drainPromise: Promise<void> | null = null;
+  private traceIdentity: AgentTraceIdentity | undefined;
   private readonly nativeResourceLane = new SerialOperationLane();
   private readonly piProgress = new Map<string, { text: string; reasoning: string; tools: Array<{ id: string; name: string; status: 'running' | 'complete' | 'error'; startedAt: string; completedAt?: string; arguments?: string; result?: string }> }>();
   private readonly progressWrites = new Map<string, Promise<void>>();
@@ -343,8 +378,9 @@ export class AgentDO extends DurableObject<AgentEnv> {
     const faux = env.ENVIRONMENT === 'dev' && env.LOCAL_AI_MODE !== 'remote' ? fauxProvider({ tokensPerSecond: 60, tokenSize: { min: 2, max: 5 } }) : null;
     this.faux = faux;
     const models = createModels();
-    if (faux) models.setProvider(faux.provider);
-    else for (const provider of gatewayProviders(env)) models.setProvider(provider);
+    const traceIdentity = () => this.traceIdentity;
+    if (faux) models.setProvider(tracedProvider(faux.provider, traceIdentity));
+    else for (const provider of gatewayProviders(env)) models.setProvider(tracedProvider(provider, traceIdentity));
     this.pi = new DurableTurnRuntime({
       storage: state.storage,
       models,
@@ -353,6 +389,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
         : { provider: 'cloudflare-workers-ai', modelId: '@cf/moonshotai/kimi-k2.7-code' },
       thinkingLevel: 'low',
       tools: () => this.tools(),
+      tracer: tracing,
       instructions: async () => {
         const configured = (await this.settings()).systemPrompt;
         return `${configured}\n\n${nativeAgentCapabilityPrompt}`;
@@ -1303,10 +1340,19 @@ export class AgentDO extends DurableObject<AgentEnv> {
     await room.fetch('https://room/connector-approvals/notify', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agentId: identity.agentId, approvalId: action.id, requesterName: authority.actorName, requesterEmail: authority.actorEmail, ownerEmail, toolName }),
+      body: JSON.stringify({ agentId: identity.agentId, approvalId: action.id, requesterName: authority.actorName, requesterEmail: authority.actorEmail, ownerEmail, toolName, argumentsJson: action.argumentsJson.slice(0, 300) }),
     });
     this.announceChange();
     return action;
+  }
+
+  private traceApprovalStage(action: PendingMcpAction, stage: ApprovalTraceStage): void {
+    tracing.enterSpan(`tool_approval ${action.toolName}`, (span) => {
+      span.setAttributes({
+        ...(this.traceIdentity ? identityAttributes('tool_approval', this.traceIdentity) : {}),
+        ...approvalAttributes({ approvalId: action.id, toolName: action.toolName, stage, requesterEmail: action.requesterEmail, connectorOwnerEmail: action.connectorOwnerEmail, argumentsJson: action.argumentsJson, argumentsDigest: action.argumentsDigest }),
+      });
+    });
   }
 
   private async appendApprovalLog(
@@ -1315,6 +1361,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
     stage: Parameters<typeof approvalLogLine>[1],
     detail = '',
   ): Promise<void> {
+    this.traceApprovalStage(action, stage);
     const messages = (await transaction.get<ChatMessage[]>('resource:messages')) ?? [];
     const entry: ChatMessage = {
       id: `mcp-${stage}:${action.id}`,
@@ -1340,7 +1387,8 @@ export class AgentDO extends DurableObject<AgentEnv> {
       const action = await transaction.get<PendingMcpAction>(key);
       const refusal = decisionRefusal(action, actor, Date.now());
       if (refusal || !action) return { refusal: refusal ?? 'Approval not found' };
-      if (action.argumentsDigest !== (await argumentsDigest(action.argumentsJson))) return { refusal: 'The request changed after it was asked' };
+      const tampered = await tamperRefusal(action);
+      if (tampered) return { refusal: tampered };
       const status = decision === 'approve' ? 'not-executed' : 'denied';
       const updated: PendingMcpAction = { ...action, status };
       await transaction.put(key, updated);
@@ -1491,7 +1539,13 @@ export class AgentDO extends DurableObject<AgentEnv> {
         } else if (this.faux) {
           this.faux.setResponses([fauxAssistantMessage(localModelReply(active.text))]);
         }
-        const reply = await this.pi.prompt(active.text, { operationId: active.id });
+        const agentIdentity = await this.ctx.storage.get<{ agentId: string }>('identity');
+        this.traceIdentity = { agentId: agentIdentity?.agentId ?? 'unknown', conversationId: agentIdentity?.agentId ?? 'unknown' };
+        const reply = await traced(tracing, `invoke_agent ${agentTraceName}`, {
+          ...identityAttributes('invoke_agent', this.traceIdentity),
+          'chat_ax.turn.id': active.id,
+          'chat_ax.turn.source': active.source ?? 'person',
+        }, () => this.pi.prompt(active.text, { operationId: active.id }));
         executionModel = reply.model;
         text = reply.text || (reply.status === 'completed' ? 'No response.' : 'Agent execution failed.');
         status = reply.status === 'completed' ? 'complete' : 'error';

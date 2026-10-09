@@ -19,5 +19,5 @@
   "vars": {
     "WORKER_NAME": "chat-ax"
   },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true, "traces": { "enabled": true } }
 }

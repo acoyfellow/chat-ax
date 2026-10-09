@@ -37,7 +37,7 @@ const mcp = createServer(async (request, response) => {
   if (message.method === 'initialize') return reply({ protocolVersion: '2025-03-26', capabilities: { tools: {} }, serverInfo: { name: 'boundary-fixture', version: '1' } });
   if (message.method === 'tools/list') return reply({ tools: [{ name: 'whoami', description: 'Returns the account this call runs as.', inputSchema: { type: 'object' } }] });
   if (message.method === 'tools/call') {
-    calls.push({ caller, tool: message.params?.name, at: Date.now() });
+    calls.push({ caller, tool: message.params?.name, arguments: JSON.stringify(message.params?.arguments ?? {}), at: Date.now() });
     return reply({ content: [{ type: 'text', text: `ran as ${caller}` }] });
   }
   return reply({});
@@ -152,7 +152,11 @@ try {
   await turn(people.sam, agentId, viaJordan('{"repo":"team/app"}'));
   const asked = await latestApproval();
   record('Sam asks to use Jordan’s connector', 'nothing runs; Jordan is asked', `${callsSince(mark).length} calls; approval ${asked?.status ?? 'missing'}`, callsSince(mark).length === 0 && asked?.status === 'pending');
-  const jordanNotified = (await approvalsFor(people.jordan)).notifications.some((item) => item.approvalId === asked.id);
+  const jordanView = await approvalsFor(people.jordan);
+  const jordanNotified = jordanView.notifications.some((item) => item.approvalId === asked.id);
+  const pushShowsArguments = jordanView.notifications.some((item) => item.approvalId === asked.id && item.body.includes('"repo":"team/app"'));
+  const cardShowsArguments = asked.argumentsJson === '{"repo":"team/app"}';
+  record('Jordan sees the exact arguments before deciding', 'push and approval card both show {"repo":"team/app"}', `push ${pushShowsArguments ? 'yes' : 'no'}, card ${cardShowsArguments ? 'yes' : 'no'}`, pushShowsArguments && cardShowsArguments);
   const samNotified = (await approvalsFor(people.sam)).notifications.some((item) => item.approvalId === asked.id);
   record('Only Jordan is notified', 'Jordan yes, Sam no', `Jordan ${jordanNotified ? 'yes' : 'no'}, Sam ${samNotified ? 'yes' : 'no'}`, jordanNotified && !samNotified);
 
@@ -165,6 +169,7 @@ try {
 
   mark = calls.length;
   const jordanApproves = await decide(people.jordan, asked.id, 'approve');
+  record('What ran is exactly what Jordan approved', 'the MCP server received {"repo":"team/app"}', callsSince(mark).map((call) => call.arguments).join(' | ') || 'nothing ran', callsSince(mark).length === 1 && callsSince(mark)[0].arguments === '{"repo":"team/app"}');
   record('Jordan approves', 'runs exactly once, as Jordan', `HTTP ${jordanApproves.status}; calls: ${callsSince(mark).map((call) => call.caller).join(', ') || 'none'}`, jordanApproves.status === 200 && callsSince(mark).length === 1 && callsSince(mark)[0].caller === people.jordan.email);
 
   mark = calls.length;
@@ -181,6 +186,8 @@ try {
 
   const lines = await logLines();
   const traced = ['Approval requested', 'Approved by jordan@example.com', 'Ran once as jordan@example.com', 'Denied by jordan@example.com'].every((phrase) => lines.some((line) => line.includes(phrase)));
+  const logShowsArguments = ['team/app', 'team/secret'].every((repo) => lines.some((line) => line.includes(`Exact arguments: {"repo":"${repo}"}`) && line.includes('Fingerprint: ')));
+  record('The chat log shows the exact arguments at every step', 'each log line names the arguments and their fingerprint', logShowsArguments ? 'yes' : 'missing', logShowsArguments);
   record('Every step is in the chat log', 'requested, approved, ran, denied', lines.map((line) => line.split(':')[0]).join(' · '), traced);
 
   const request = await api(people.sam, '/api/person-requests', { method: 'POST', body: JSON.stringify({ recipientEmail: people.jordan.email, title: 'Review MR 42', details: 'Please review https://gitlab.example.com/team/app/-/merge_requests/42' }) });
