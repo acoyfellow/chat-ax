@@ -1,0 +1,31 @@
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_f17af6770c4732 1-155
+  s_4f3d73861137de::t_5055c06f626a9c 156
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_7442fce5b52103 1-41
+scripts/e2e-kill-mid-reply.mjs
+  s_4f3d73861137de::t_6cf707287ec988 1-76
+  s_4f3d73861137de::t_11f07715581bb6 77-80
+.gitignore
+  s_4f3d73861137de::t_fd860c1eef1560 13
+docs/security.md
+  s_4f3d73861137de::t_26e93ac2ffa976 7-19
+package.json
+  s_4f3d73861137de::t_a0d32ed991cd1a 16-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f0982fea100df8dbe210018f5afc5fc568482d94",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
