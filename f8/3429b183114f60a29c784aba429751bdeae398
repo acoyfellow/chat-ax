@@ -1,0 +1,29 @@
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_ac8ae7d285f4ec 140-147
+  s_4f3d73861137de::t_9cedd84372ec1f 64-66
+README.md
+  s_4f3d73861137de::t_bebc157f3863da 25
+  s_4f3d73861137de::t_964843cc13f414 22,24,26-29,37-56,58,60-63,65
+scripts/e2e-kill-mid-reply.mjs
+  s_4f3d73861137de::t_6ee74f83f3196d 27
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_14edbfeadb5509 37
+src/ui/Showcase.svelte
+  s_4f3d73861137de::t_64dd871398773f 17,96,110,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f83429b183114f60a29c784aba429751bdeae398",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
