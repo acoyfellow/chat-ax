@@ -1,0 +1,32 @@
+src/ui/Showcase.svelte
+  s_4f3d73861137de::t_274a4aa3b94767 2,7-8,11-110,112-113,117-184,186-197,202-234,239-242,247-253,261-295,298-311
+  s_4f3d73861137de::t_2a421619695db8 312
+README.md
+  s_4f65335ba8955f::t_d1b2be5c64c51b 157
+src/ui/showcase-script.ts
+  s_4f3d73861137de::t_d7e941b1fc2058 73,79,86,95,97-98,100,102-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8145de0bc5f169f11f20907073800f71b3907495",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    },
+    "s_4f65335ba8955f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0428c-86e7-7e26-bc73-8a8b9b5c6d7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
