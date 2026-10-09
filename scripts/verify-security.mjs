@@ -22,10 +22,19 @@ const results = [];
 
 function run(label, command) {
   const started = Date.now();
-  const result = spawnSync(command, { shell: true, encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '0' } });
-  const output = `${result.stdout}${result.stderr}`;
-  const ok = result.status === 0;
-  results.push({ label, command, ok, ms: Date.now() - started, tail: output.trim().split('\n').slice(-6).join('\n') });
+  const attempt = () => {
+    const result = spawnSync(command, { shell: true, encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '0' } });
+    return { status: result.status, output: `${result.stdout}${result.stderr}` };
+  };
+  const devServerCrashed = (output) => output.includes('Network connection lost') || output.includes('ECONNREFUSED 127.0.0.1');
+  let { status, output } = attempt();
+  let retriedAfterDevServerCrash = false;
+  if (status !== 0 && devServerCrashed(output)) {
+    retriedAfterDevServerCrash = true;
+    ({ status, output } = attempt());
+  }
+  const ok = status === 0;
+  results.push({ label, command, ok, retriedAfterDevServerCrash, ms: Date.now() - started, tail: output.trim().split('\n').slice(-6).join('\n') });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}  (${((Date.now() - started) / 1000).toFixed(1)}s)\n      ${command}`);
   if (!ok) console.log(output.trim().split('\n').slice(-15).map((line) => `      ${line}`).join('\n'));
 }

@@ -2,7 +2,9 @@
 
 A shared chat room where your team and a fleet of AI agents work together, on your own Cloudflare account.
 
-https://github.com/acoyfellow/chat-ax/raw/main/docs/images/chat-ax.mp4
+![Sam asks to use Jordan's GitLab, Jordan approves, it runs once. Agents only talk to their parent and children.](docs/images/hero.png)
+
+[Watch the 44-second video](docs/images/chat-ax.mp4)
 
 - **One agent, many people.** Everyone talks to the same agent and sees every reply stream in. When several people ask at once, you choose how the queue runs: first in first out, quick questions first, round robin, parallel, and 16 more.
 - **Each agent has its own space.** Settings, tools, skills, files, state and scheduled jobs belong to that agent. It can edit them itself, with no one clicking anything.
@@ -15,7 +17,7 @@ https://github.com/acoyfellow/chat-ax/raw/main/docs/images/chat-ax.mp4
 
 It runs on the Workers free plan. No database to run and no API keys to paste; the default model is Workers AI on your account.
 
-![The fleet map: agents and their helpers](docs/images/fleet.png)
+![One agent: its own space, and replies that survive a restart](docs/images/one-agent.png)
 
 ## Deploy
 
