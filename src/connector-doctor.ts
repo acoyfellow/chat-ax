@@ -2,6 +2,7 @@ export type DoctorStep = { step: string; ok: boolean; detail: string };
 
 export type DoctorProbes = {
   configured: () => { name: string; serverUrl: string } | null;
+  signIn: () => Promise<{ ok: boolean; detail: string }>;
   status: () => Promise<{ connected: boolean }>;
   token: () => Promise<string | null>;
   listTools: () => Promise<{ name: string }[]>;
@@ -16,6 +17,11 @@ export async function diagnoseConnector(email: string, probes: DoctorProbes): Pr
   }
   steps.push({ step: 'configured', ok: true, detail: `${connector.name} at ${connector.serverUrl}` });
   const status = await probes.status().catch(() => ({ connected: false }));
+  if (!status.connected) {
+    const signIn = await probes.signIn().catch((error: unknown) => ({ ok: false, detail: error instanceof Error ? error.message : 'Sign-in check failed' }));
+    steps.push({ step: 'sign-in', ok: signIn.ok, detail: signIn.detail });
+    if (!signIn.ok) return steps;
+  }
   steps.push({
     step: 'linked',
     ok: status.connected,

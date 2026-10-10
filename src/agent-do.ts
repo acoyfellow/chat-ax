@@ -129,6 +129,7 @@ const submittedMessageSchema = z.object({
   authorEmail: z.string().trim().toLowerCase().email().max(320),
   avatarUrl: z.string().url().max(2_000).optional(),
   personRequestId: z.string().trim().min(1).max(200).optional(),
+  callbackUrl: z.string().url().max(500).optional(),
 });
 
 export type AgentResources = {
@@ -1195,6 +1196,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
           const vault = connectorVault(this.env.CONNECTOR_VAULT, authority.actorId);
           const steps = await diagnoseConnector(authority.actorEmail, {
             configured: () => mcpConnector(this.env),
+            signIn: async () => z.object({ ok: z.boolean(), detail: z.string() }).parse(await (await vault.fetch('https://vault/preflight', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ callbackUrl: await this.connectorCallbackUrl() }) })).json()),
             status: async () => z.object({ connected: z.boolean() }).parse(await (await vault.fetch('https://vault/status')).json()),
             token: async () => z.object({ token: z.string().nullable() }).parse(await (await vault.fetch('https://vault/token')).json()).token,
             listTools: () => listSpeakerMcpTools({ namespace: this.env.CONNECTOR_VAULT, actorId: authority.actorId, env: this.env }),
@@ -1381,6 +1383,12 @@ export class AgentDO extends DurableObject<AgentEnv> {
         },
       },
     ];
+  }
+
+  private async connectorCallbackUrl(): Promise<string> {
+    const url = await this.ctx.storage.get<string>('connector-callback-url');
+    if (!url) throw new Error('The sign-in address is not known yet; send a message from the web app first');
+    return url;
   }
 
   private async speakerConnector(message: ChatMessage): Promise<SpeakerConnectorStatus | null> {
@@ -2148,7 +2156,8 @@ export class AgentDO extends DurableObject<AgentEnv> {
     if (request.method === 'POST' && url.pathname === '/messages') {
       if (!(await this.ctx.storage.get('identity')))
         return Response.json({ error: 'unknown agent' }, { status: 404 });
-      const input = submittedMessageSchema.parse(await readBoundedJson(request));
+      const { callbackUrl, ...input } = submittedMessageSchema.parse(await readBoundedJson(request));
+      if (callbackUrl) await this.ctx.storage.put('connector-callback-url', callbackUrl);
       const message: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'user',

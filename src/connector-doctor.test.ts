@@ -6,6 +6,7 @@ const configured = () => ({ name: 'ax-mcp', serverUrl: 'https://mcp.example/mcp'
 function probes(overrides: Partial<DoctorProbes>): DoctorProbes {
   return {
     configured,
+    signIn: async () => ({ ok: true, detail: 'ok' }),
     status: async () => ({ connected: true }),
     token: async () => 'token',
     listTools: async () => [{ name: 'a' }, { name: 'b' }],
@@ -16,8 +17,13 @@ function probes(overrides: Partial<DoctorProbes>): DoctorProbes {
 describe('connector doctor', () => {
   test('stops at the first broken step and says how to fix it', async () => {
     const steps = await diagnoseConnector('sam@example.com', probes({ status: async () => ({ connected: false }) }));
-    expect(steps.map((step) => step.step)).toEqual(['configured', 'linked']);
-    expect(steps[1].detail).toContain('Connect ax-mcp');
+    expect(steps.map((step) => step.step)).toEqual(['configured', 'sign-in', 'linked']);
+    expect(steps[2].detail).toContain('Connect ax-mcp');
+  });
+
+  test('a provider that refuses sign-in is caught before linking', async () => {
+    const steps = await diagnoseConnector('sam@example.com', probes({ status: async () => ({ connected: false }), signIn: async () => ({ ok: false, detail: 'redirect_uri is not allowed' }) }));
+    expect(steps.at(-1)).toMatchObject({ step: 'sign-in', ok: false });
   });
 
   test('an expired grant is reported as a token failure', async () => {

@@ -90,6 +90,7 @@ export class ConnectorVaultDO extends DurableObject<ConnectorEnv> {
       return Response.json({ configured: true, id: connector.id, name: connector.name, connected: Boolean(grant) });
     }
     if (pathname === '/start' && request.method === 'POST') return this.start(request);
+    if (pathname === '/preflight' && request.method === 'POST') return this.preflight(request);
     if (pathname === '/complete' && request.method === 'POST') return this.complete(request);
     if (pathname === '/token' && request.method === 'GET') {
       return Response.json({ token: await this.validToken() });
@@ -108,6 +109,30 @@ export class ConnectorVaultDO extends DurableObject<ConnectorEnv> {
       return Response.json({ ok: true });
     }
     return Response.json({ error: 'not found' }, { status: 404 });
+  }
+
+  private async preflight(request: Request): Promise<Response> {
+    const input = await parseRequest(request, v.object({ callbackUrl: v.string() }));
+    try {
+      const endpoint = await this.endpoints();
+      const registration = await fetch(endpoint.registration, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          client_name: `chat-ax-preflight-${crypto.randomUUID()}`,
+          redirect_uris: [input.callbackUrl],
+          grant_types: ['authorization_code', 'refresh_token'],
+          response_types: ['code'],
+          token_endpoint_auth_method: 'none',
+        }),
+      });
+      if (registration.ok) return Response.json({ ok: true, detail: `Sign-in can start; the provider accepts ${input.callbackUrl}.` });
+      const reason = (await registration.text()).slice(0, 300);
+      return Response.json({ ok: false, detail: `The provider refused sign-in registration (HTTP ${registration.status}) for ${input.callbackUrl}: ${reason}` });
+    } catch (error) {
+      return Response.json({ ok: false, detail: `Sign-in discovery failed: ${error instanceof Error ? error.message.slice(0, 300) : 'unknown error'}` });
+    }
   }
 
   private async start(request: Request): Promise<Response> {

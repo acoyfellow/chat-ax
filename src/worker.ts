@@ -1511,6 +1511,7 @@ app.post('/api/messages', async (context) => {
       avatarUrl: identity.avatarUrl,
       attachmentIds: body.attachmentIds,
       threadId: body.threadId,
+      callbackUrl: connectorCallbackUrl(context.req.url, context.env),
     }),
   });
   return new Response(response.body, response);

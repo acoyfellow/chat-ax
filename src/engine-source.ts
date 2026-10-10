@@ -22,19 +22,19 @@ export function safeSourcePath(path: string): string | null {
   return pathPattern.test(trimmed) ? trimmed : null;
 }
 
-function githubHeaders(): HeadersInit {
-  return { accept: 'application/vnd.github+json', 'user-agent': 'chat-ax-engine-source' };
+function listingHeaders(): HeadersInit {
+  return { accept: 'application/json', 'user-agent': 'chat-ax-engine-source' };
 }
 
 export async function listEngineFiles(source: EngineSource, prefix: string): Promise<string[]> {
   const response = await fetch(
-    `https://api.github.com/repos/${source.owner}/${source.repo}/git/trees/${source.commit}?recursive=1`,
-    { headers: githubHeaders() },
+    `https://data.jsdelivr.com/v1/packages/gh/${source.owner}/${source.repo}@${source.commit}?structure=flat`,
+    { headers: listingHeaders() },
   );
   if (!response.ok) throw new Error(`Could not list the engine source (HTTP ${response.status})`);
-  const body = (await response.json()) as { tree?: { path?: unknown; type?: unknown }[] };
-  return (body.tree ?? [])
-    .flatMap((entry) => (entry.type === 'blob' && typeof entry.path === 'string' ? [entry.path] : []))
+  const body = (await response.json()) as { files?: { name?: unknown }[] };
+  return (body.files ?? [])
+    .flatMap((entry) => (typeof entry.name === 'string' ? [entry.name.slice(entry.name.startsWith('/') ? 1 : 0)] : []))
     .filter((path) => path.startsWith(prefix) && !path.startsWith('node_modules/'))
     .slice(0, 400);
 }
