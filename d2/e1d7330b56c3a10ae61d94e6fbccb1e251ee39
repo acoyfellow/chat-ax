@@ -1,0 +1,31 @@
+src/agent-tool-gates.test.ts
+  s_4f3d73861137de::t_cd9c30a4f86438 1-25
+src/agent-tool-gates.ts
+  s_4f3d73861137de::t_becd0c59d9c57a 1-22
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_7e0aaeeaab0a3c 193-213
+src/agent-do.ts
+  s_4f3d73861137de::t_e545e50bcf3378 1,206-213,586,798-802,1292,1294-1295,1391-1466,1562-1563
+src/connector-approvals.ts
+  s_4f3d73861137de::t_c6d9344f358567 49,53-55
+src/mcp-approval.ts
+  s_4f3d73861137de::t_558e8dcd9f0175 16
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_3e6419c297b483 915-919
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d2e1d7330b56c3a10ae61d94e6fbccb1e251ee39",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
