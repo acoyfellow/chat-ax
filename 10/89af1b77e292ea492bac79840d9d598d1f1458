@@ -1,0 +1,29 @@
+src/engine-source.ts
+  s_4f3d73861137de::t_3bfe3442b3f37c 25-26,31-32,35-37
+src/agent-do.ts
+  s_4f3d73861137de::t_22e29565cc61c1 132,1199,1388-1393,2159-2160
+src/connector-doctor.test.ts
+  s_4f3d73861137de::t_2c961529367474 9,20-26
+src/connector-doctor.ts
+  s_4f3d73861137de::t_cd2d3994d3ddf8 5,20-24
+src/connector-vault.ts
+  s_4f3d73861137de::t_b48bc7b4523d34 93,114-137
+src/worker.ts
+  s_4f3d73861137de::t_1809174814ce29 1514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1089af1b77e292ea492bac79840d9d598d1f1458",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
