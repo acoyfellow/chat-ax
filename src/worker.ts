@@ -1,3 +1,4 @@
+import { mcpConnector } from './mcp-connector';
 import { Hono, type MiddlewareHandler } from 'hono';
 import { attachSvelteRoutes, svelteRenderer } from 'svelte-hono';
 import * as v from 'valibot';
@@ -1035,6 +1036,11 @@ app.get('/sw.js', (context) => {
   });
 });
 
+function connectorCallbackUrl(requestUrl: string, env: Env): string {
+  const connectorId = mcpConnector(env)?.id ?? 'mcp';
+  return `${new URL(requestUrl).origin}/api/connectors/${connectorId}/callback`;
+}
+
 app.get('/api/connectors/mcp/status', async (context) => {
   const response = await viewerVault(context.env, context.get('identity')).fetch(
     'https://vault/status',
@@ -1044,7 +1050,7 @@ app.get('/api/connectors/mcp/status', async (context) => {
 
 app.get('/api/connectors/mcp/authorize', async (context) => {
   try {
-    const callbackUrl = `${new URL(context.req.url).origin}/api/connectors/mcp/callback`;
+    const callbackUrl = connectorCallbackUrl(context.req.url, context.env);
     const response = await viewerVault(context.env, context.get('identity')).fetch(
       'https://vault/start',
       {
@@ -1064,11 +1070,11 @@ app.get('/api/connectors/mcp/authorize', async (context) => {
   }
 });
 
-app.get('/api/connectors/mcp/callback', async (context) => {
+app.get('/api/connectors/:connectorId/callback', async (context) => {
   const code = context.req.query('code');
   const state = context.req.query('state');
   if (!code || !state) return context.redirect('/?connector=mcp&result=error', 302);
-  const callbackUrl = `${new URL(context.req.url).origin}/api/connectors/mcp/callback`;
+  const callbackUrl = connectorCallbackUrl(context.req.url, context.env);
   const response = await viewerVault(context.env, context.get('identity')).fetch(
     'https://vault/complete',
     {
