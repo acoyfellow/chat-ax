@@ -263,6 +263,7 @@ export interface RoomEnv {
   VAPID_APPLICATION_SERVER?: string;
   VAPID_PRIVATE_KEY?: string;
   BUILD_ID?: string;
+  ENGINE_REPO?: string;
 }
 
 type UniversalMcpReceipt = {

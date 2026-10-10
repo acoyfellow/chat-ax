@@ -1,3 +1,5 @@
+import { diagnoseConnector, doctorReport } from './connector-doctor';
+import { engineSource, listEngineFiles, readEngineFile, safeSourcePath } from './engine-source';
 import { promptWithSpeaker, type SpeakerConnectorStatus } from './turn-speaker';
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
@@ -166,6 +168,8 @@ export type AgentEnv = {
   ROOM: DurableObjectNamespace;
   FILES: R2Bucket;
   ENVIRONMENT?: string;
+  BUILD_ID?: string;
+  ENGINE_REPO?: string;
   LOCAL_AI_MODE?: 'faux' | 'remote';
   MCP_CONNECTOR_ID?: string;
   MCP_CONNECTOR_NAME?: string;
@@ -197,6 +201,8 @@ const requestPersonParameters = Type.Object(
   { additionalProperties: false },
 );
 const emptyParameters = Type.Object({}, { additionalProperties: false });
+const sourcePrefixParameters = Type.Object({ prefix: Type.Optional(Type.String({ maxLength: 300 })) }, { additionalProperties: false });
+const sourcePathParameters = Type.Object({ path: Type.String({ minLength: 1, maxLength: 300 }) }, { additionalProperties: false });
 const identifierParameters = Type.Object(
   { id: Type.String({ minLength: 1, maxLength: 200 }) },
   { additionalProperties: false },
@@ -1176,6 +1182,59 @@ export class AgentDO extends DurableObject<AgentEnv> {
               };
             },
           ),
+      },
+      {
+        name: 'check_my_connector',
+        label: 'Check the speaker connector',
+        description:
+          "Diagnose the current speaker's connector step by step (configured, linked, token, tools) and say exactly how to fix the first failing step. Use it whenever connector tools are missing or failing instead of guessing.",
+        parameters: emptyParameters,
+        replay: 'safe' as const,
+        execute: async (_input: Record<string, never>, invocation: TurnInvocation) => {
+          const authority = resolveTurnAuthority(await this.messages(), invocation.operationId);
+          const vault = connectorVault(this.env.CONNECTOR_VAULT, authority.actorId);
+          const steps = await diagnoseConnector(authority.actorEmail, {
+            configured: () => mcpConnector(this.env),
+            status: async () => z.object({ connected: z.boolean() }).parse(await (await vault.fetch('https://vault/status')).json()),
+            token: async () => z.object({ token: z.string().nullable() }).parse(await (await vault.fetch('https://vault/token')).json()).token,
+            listTools: () => listSpeakerMcpTools({ namespace: this.env.CONNECTOR_VAULT, actorId: authority.actorId, env: this.env }),
+          });
+          return { content: [{ type: 'text' as const, text: `Connector check for ${authority.actorEmail}:\n${doctorReport(steps)}` }], details: { steps } };
+        },
+      },
+      {
+        name: 'list_my_source',
+        label: 'List my own source files',
+        description:
+          'List files in the public engine repository at the exact commit this agent is running. Optional prefix such as "src/". Read-only.',
+        parameters: sourcePrefixParameters,
+        replay: 'safe' as const,
+        execute: async (input: { prefix?: string }) => {
+          const source = engineSource(this.env);
+          if (!source) throw new Error('This deployment does not publish its engine source commit');
+          const prefix = input.prefix ? safeSourcePath(input.prefix) : '';
+          if (prefix === null) throw new Error('Invalid path prefix');
+          const files = await listEngineFiles(source, prefix);
+          const header = `github.com/${source.owner}/${source.repo} at ${source.commit}`;
+          return { content: [{ type: 'text' as const, text: `${header}\n${files.join('\n')}` }], details: { ...source, files } };
+        },
+      },
+      {
+        name: 'read_my_source',
+        label: 'Read one of my own source files',
+        description:
+          'Read one file from the public engine repository at the exact commit this agent is running, to answer questions about how you work. Read-only; up to 60 KB.',
+        parameters: sourcePathParameters,
+        replay: 'safe' as const,
+        execute: async (input: { path: string }) => {
+          const source = engineSource(this.env);
+          if (!source) throw new Error('This deployment does not publish its engine source commit');
+          const path = safeSourcePath(input.path);
+          if (!path) throw new Error('Invalid file path');
+          const file = await readEngineFile(source, path);
+          const note = file.truncated ? '\n[truncated at 60 KB]' : '';
+          return { content: [{ type: 'text' as const, text: `${path} @ ${source.commit.slice(0, 7)}\n${file.text}${note}` }], details: { path, commit: source.commit, truncated: file.truncated } };
+        },
       },
       {
         name: 'list_people',
