@@ -1,0 +1,31 @@
+src/engine-source.ts
+  s_4f3d73861137de::t_6ee36979626e68 1-51
+src/connector-doctor.ts
+  s_4f3d73861137de::t_89509a80208646 1-49
+src/connector-doctor.test.ts
+  s_4f3d73861137de::t_bd3ba6b80a338c 1-39
+src/engine-source.test.ts
+  s_4f3d73861137de::t_fe58f92bd4877b 1-20
+src/agent-do.ts
+  s_4f3d73861137de::t_eab6132cb33876 1-2,171-172,204-205,1186-1238
+src/native-agent-tools.ts
+  s_4f3d73861137de::t_14e1b1d535cdfb 47
+src/room.ts
+  s_4f3d73861137de::t_8f585b18093bf1 266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ba7195a18ef78f3635683595ac42641fba06e6c7",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
