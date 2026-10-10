@@ -1,3 +1,4 @@
+import { promptWithSpeaker, type SpeakerConnectorStatus } from './turn-speaker';
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
 import { DurableObject, tracing } from 'cloudflare:workers';
@@ -31,7 +32,8 @@ import { workersAI } from './pi/providers/workers-ai';
 import type { Provider } from '@earendil-works/pi-ai';
 import type { ChatMessage, RoomSettings, WorkItem } from './room';
 import { type RoomSkill, createRoomSkill, deleteRoomSkill, editRoomSkill } from './room-skills';
-import type { ConnectorVaultDO } from './connector-vault';
+import { type ConnectorVaultDO, connectorVault } from './connector-vault';
+import { mcpConnector } from './mcp-connector';
 import { recordMcpExecution, type McpReceipt } from './mcp-receipts';
 import { nativeAgentCapabilityPrompt, SerialOperationLane } from './native-agent-tools';
 import { FrameCoalescer, type LiveFrame, encodeFrame, isWebSocketUpgrade } from './live-socket';
@@ -1306,6 +1308,14 @@ export class AgentDO extends DurableObject<AgentEnv> {
     ];
   }
 
+  private async speakerConnector(message: ChatMessage): Promise<SpeakerConnectorStatus | null> {
+    const connector = mcpConnector(this.env);
+    if (!connector || message.source !== 'person' || !message.authorId) return null;
+    const response = await connectorVault(this.env.CONNECTOR_VAULT, message.authorId).fetch('https://vault/status').catch(() => null);
+    const status = response?.ok ? z.object({ connected: z.boolean() }).safeParse(await response.json()) : null;
+    return { name: connector.name, connected: status?.success === true && status.data.connected };
+  }
+
   private async stageConnectorApproval(
     authority: { actorId: string; actorEmail: string; actorName: string },
     ownerEmail: string,
@@ -1555,7 +1565,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
           ...identityAttributes('invoke_agent', this.traceIdentity),
           'chat_ax.turn.id': active.id,
           'chat_ax.turn.source': active.source ?? 'person',
-        }, () => this.pi.prompt(active.text, { operationId: active.id }));
+        }, async () => this.pi.prompt(promptWithSpeaker(active, await this.speakerConnector(active)), { operationId: active.id }));
         executionModel = reply.model;
         text = reply.text || (reply.status === 'completed' ? 'No response.' : 'Agent execution failed.');
         status = reply.status === 'completed' ? 'complete' : 'error';
