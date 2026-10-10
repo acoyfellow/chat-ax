@@ -912,7 +912,11 @@
                   <strong>{approval.toolName}</strong>
                   <pre>{approval.argumentsJson}</pre>
                   <p class="approval-scope">Approving this runs exactly these arguments, once. Anything different needs a new approval. Fingerprint <code>{approval.argumentsDigest.slice(0, 12)}</code>.</p>
-                  <p>Status: {approvalStatusLabel(approval.status)}. Runs once, as {approval.connectorOwnerEmail}. Everyone here sees the result.</p>
+                  {#if approval.kind === 'agent-tool'}
+                    <p>Status: {approvalStatusLabel(approval.status)}. The agent asked to do this for {approval.requesterEmail}. Only they can approve it.</p>
+                  {:else}
+                    <p>Status: {approvalStatusLabel(approval.status)}. Runs once, as {approval.connectorOwnerEmail}. Everyone here sees the result.</p>
+                  {/if}
                   {#if approval.status === 'outcome-unknown'}
                     <p>The action may already have happened. Do not repeat it. Check the external service before requesting another action.</p>
                   {:else if approval.status === 'not-executed'}

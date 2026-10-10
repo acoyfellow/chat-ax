@@ -190,6 +190,27 @@ try {
   record('The chat log shows the exact arguments at every step', 'each log line names the arguments and their fingerprint', logShowsArguments ? 'yes' : 'missing', logShowsArguments);
   record('Every step is in the chat log', 'requested, approved, ran, denied', lines.map((line) => line.split(':')[0]).join(' · '), traced);
 
+  const proof = (tool, args) => `NATIVE_TOOL_PROOF ${tool} ${JSON.stringify(args)}`;
+  const filesFor = async (person) => (await approvalsFor(person)).files ?? [];
+  await turn(people.jordan, agentId, proof('create_file', { name: 'jordan-notes.md', mime: 'text/markdown', content: 'keep me' }));
+  const jordanFile = (await filesFor(people.jordan)).find((file) => file.name === 'jordan-notes.md');
+  await turn(people.sam, agentId, proof('delete_file', { id: jordanFile?.id ?? 'missing' }));
+  const heldDelete = (await approvalsFor(people.sam)).mcpApprovals.find((item) => item.kind === 'agent-tool' && item.toolName === 'delete_file' && item.argumentsJson.includes(jordanFile?.id ?? '-'));
+  const stillThere = (await filesFor(people.jordan)).some((file) => file.id === jordanFile?.id);
+  record('Sam asks the agent to delete Jordan’s file', 'held for Sam to approve; the file is still there', `approval ${heldDelete?.status ?? 'missing'}, file ${stillThere ? 'kept' : 'gone'}`, heldDelete?.status === 'pending' && stillThere);
+  const jordanApprovesSams = heldDelete ? await api(people.jordan, `/api/mcp-approvals/${heldDelete.id}/approve?threadId=${encodeURIComponent(agentId)}`, { method: 'POST', body: '{}' }) : { status: 0 };
+  record('Someone else approves Sam’s held delete', 'refused; only the person who asked can approve', `HTTP ${jordanApprovesSams.status}; file ${(await filesFor(people.jordan)).some((file) => file.id === jordanFile?.id) ? 'kept' : 'gone'}`, jordanApprovesSams.status >= 400 && (await filesFor(people.jordan)).some((file) => file.id === jordanFile?.id));
+  const samApproves = heldDelete ? await api(people.sam, `/api/mcp-approvals/${heldDelete.id}/approve?threadId=${encodeURIComponent(agentId)}`, { method: 'POST', body: '{}' }) : { status: 0 };
+  const goneAfter = !(await filesFor(people.jordan)).some((file) => file.id === jordanFile?.id);
+  const replayDelete = heldDelete ? await api(people.sam, `/api/mcp-approvals/${heldDelete.id}/approve?threadId=${encodeURIComponent(agentId)}`, { method: 'POST', body: '{}' }) : { status: 0 };
+  record('Sam approves his own held delete', 'runs once; a second approve is refused', `approve ${samApproves.status}, file ${goneAfter ? 'gone' : 'kept'}, replay ${replayDelete.status}`, samApproves.status === 200 && goneAfter && replayDelete.status >= 400);
+
+  const requestsBefore = (await approvalsFor(people.jordan)).personRequests?.length ?? 0;
+  await turn(people.sam, agentId, proof('request_person', { recipientEmail: people.jordan.email, title: 'Gate check', details: 'Please look at this.' }));
+  const heldRequest = (await approvalsFor(people.sam)).mcpApprovals.find((item) => item.kind === 'agent-tool' && item.toolName === 'request_person' && item.status === 'pending');
+  const requestsAfter = (await approvalsFor(people.jordan)).personRequests?.length ?? 0;
+  record('The agent messages another person', 'held for Sam to approve; Jordan gets nothing yet', `approval ${heldRequest?.status ?? 'missing'}, Jordan requests ${requestsBefore} → ${requestsAfter}`, heldRequest?.status === 'pending' && requestsAfter === requestsBefore);
+
   const request = await api(people.sam, '/api/person-requests', { method: 'POST', body: JSON.stringify({ recipientEmail: people.jordan.email, title: 'Review MR 42', details: 'Please review https://gitlab.example.com/team/app/-/merge_requests/42' }) });
   const requestId = request.body.request.id;
   const samAccepts = await api(people.sam, `/api/person-requests/${requestId}/accept`, { method: 'POST', body: '{}' });

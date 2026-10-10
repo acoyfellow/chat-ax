@@ -46,11 +46,13 @@ export function approvalFingerprint(digest: string): string {
 }
 
 export function approvalLogLine(
-  action: Pick<PendingMcpAction, 'requesterEmail' | 'connectorOwnerEmail' | 'toolName' | 'argumentsJson' | 'argumentsDigest'>,
+  action: Pick<PendingMcpAction, 'requesterEmail' | 'connectorOwnerEmail' | 'toolName' | 'argumentsJson' | 'argumentsDigest' | 'kind'>,
   stage: 'requested' | 'approved' | 'denied' | 'ran' | 'failed',
   detail = '',
 ): string {
-  const who = `${action.requesterEmail} → ${action.connectorOwnerEmail}'s connector · ${action.toolName}`;
+  const who = action.kind === 'agent-tool'
+    ? `agent action for ${action.requesterEmail} · ${action.toolName}`
+    : `${action.requesterEmail} → ${action.connectorOwnerEmail}'s connector · ${action.toolName}`;
   const exact = `${approvalArgumentsLine(action.argumentsJson)}\nFingerprint: ${approvalFingerprint(action.argumentsDigest)}`;
   if (stage === 'requested') return `🔐 Approval requested: ${who}. Nothing has run. Waiting for ${action.connectorOwnerEmail}.\n${exact}`;
   if (stage === 'approved') return `✅ Approved by ${action.connectorOwnerEmail}: ${who}. Running once, with exactly these arguments.\n${exact}`;

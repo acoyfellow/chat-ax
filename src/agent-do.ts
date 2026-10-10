@@ -1,3 +1,4 @@
+import { gateReason, heldToolMessage, type GatedAgentTool } from './agent-tool-gates';
 import { diagnoseConnector, doctorReport } from './connector-doctor';
 import { engineSource, listEngineFiles, readEngineFile, safeSourcePath } from './engine-source';
 import { promptWithSpeaker, type SpeakerConnectorStatus } from './turn-speaker';
@@ -202,6 +203,14 @@ const requestPersonParameters = Type.Object(
   { additionalProperties: false },
 );
 const emptyParameters = Type.Object({}, { additionalProperties: false });
+const approvedPersonRequest = z.object({
+  recipientEmail: z.string().email().max(320),
+  recipientName: z.string().min(1).max(200).optional(),
+  title: z.string().min(1).max(240),
+  details: z.string().min(1).max(8000),
+  kind: z.literal('review').optional(),
+  resourceUrl: z.string().url().max(2000).optional(),
+});
 const sourcePrefixParameters = Type.Object({ prefix: Type.Optional(Type.String({ maxLength: 300 })) }, { additionalProperties: false });
 const sourcePathParameters = Type.Object({ path: Type.String({ minLength: 1, maxLength: 300 }) }, { additionalProperties: false });
 const identifierParameters = Type.Object(
@@ -574,6 +583,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
     resource: 'state' | 'jobs' | 'skills' | 'files' | 'settings' | 'work',
     action: string,
     input: Record<string, unknown>,
+    approved = false,
   ): Promise<{ content: Array<{ type: 'text'; text: string }>; details: unknown }> {
     const authority = resolveTurnAuthority(await this.messages(), operationId);
     const actorId = authority.actorId;
@@ -785,6 +795,11 @@ export class AgentDO extends DurableObject<AgentEnv> {
         const id = String(input.id);
         const file = files.find((candidate) => candidate.id === id);
         if (!file) throw new Error('File not found');
+        const reason = approved ? null : gateReason({ toolName: 'delete_file', speakerId: actorId, fileCreatedBy: file.createdBy });
+        if (reason) {
+          await this.stageAgentToolApproval(authority, 'delete_file', JSON.stringify({ id, name: file.name }), operationId);
+          return { content: [{ type: 'text', text: heldToolMessage('delete_file', reason) }], details: { held: true, id } };
+        }
         const cleanupKey = `native-file-cleanup:${id}`;
         await this.ctx.storage.transaction(async (transaction) => {
           const current = (await transaction.get<SharedFile[]>('resource:files')) ?? [];
@@ -1274,36 +1289,10 @@ export class AgentDO extends DurableObject<AgentEnv> {
           invocation: TurnInvocation,
         ) => {
           const authority = resolveTurnAuthority(await this.messages(), invocation.operationId);
-          const identity = await this.ctx.storage.get<{ agentId: string }>('identity');
-          if (!identity) throw new Error('Agent identity is unavailable');
-          const room = this.env.ROOM.get(this.env.ROOM.idFromName('agent-coordinator-v1'));
-          const response = await room.fetch('https://room/person-requests', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              actorId: authority.actorId,
-              actorEmail: authority.actorEmail,
-              actorName: authority.actorName,
-              recipientEmail: input.recipientEmail,
-              recipientName: input.recipientName,
-              title: input.title,
-              details: input.details,
-              kind: input.kind,
-              resourceUrl: input.resourceUrl,
-              initiatingMessageId: invocation.operationId,
-              agentId: identity.agentId,
-            }),
-          });
-          const result = await response.json<{ request?: { id: string }; pushDevices?: number; error?: string }>();
-          if (!response.ok || !result.request)
-            throw new Error(result.error ?? 'Unable to send the person request');
-          const pushDevices = result.pushDevices ?? 0;
-          const delivery = pushDevices > 0
-            ? `A push notification went to ${pushDevices} of their device${pushDevices === 1 ? '' : 's'}.`
-            : 'They have not turned on push notifications, so they will see it the next time they open Chat AX.';
+          await this.stageAgentToolApproval(authority, 'request_person', canonicalArguments(JSON.stringify(input)), invocation.operationId);
           return {
-            content: [{ type: 'text' as const, text: `Sent a request to ${input.recipientEmail}. ${delivery}` }],
-            details: { requestId: result.request.id, status: 'pending', pushDevices },
+            content: [{ type: 'text' as const, text: heldToolMessage('request_person', gateReason({ toolName: 'request_person', speakerId: authority.actorId }) ?? '') }],
+            details: { held: true },
           };
         },
       },
@@ -1397,6 +1386,82 @@ export class AgentDO extends DurableObject<AgentEnv> {
     const response = await connectorVault(this.env.CONNECTOR_VAULT, message.authorId).fetch('https://vault/status').catch(() => null);
     const status = response?.ok ? z.object({ connected: z.boolean() }).safeParse(await response.json()) : null;
     return { name: connector.name, connected: status?.success === true && status.data.connected };
+  }
+
+  private async sendPersonRequest(
+    authority: { actorId: string; actorEmail: string; actorName: string },
+    input: { recipientEmail: string; recipientName?: string; title: string; details: string; kind?: 'review'; resourceUrl?: string },
+    operationId: string,
+  ): Promise<string> {
+    const identity = await this.ctx.storage.get<{ agentId: string }>('identity');
+    if (!identity) throw new Error('Agent identity is unavailable');
+    const room = this.env.ROOM.get(this.env.ROOM.idFromName('agent-coordinator-v1'));
+    const response = await room.fetch('https://room/person-requests', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        actorId: authority.actorId,
+        actorEmail: authority.actorEmail,
+        actorName: authority.actorName,
+        recipientEmail: input.recipientEmail,
+        recipientName: input.recipientName,
+        title: input.title,
+        details: input.details,
+        kind: input.kind,
+        resourceUrl: input.resourceUrl,
+        initiatingMessageId: operationId,
+        agentId: identity.agentId,
+      }),
+    });
+    const result = await response.json<{ request?: { id: string }; pushDevices?: number; error?: string }>();
+    if (!response.ok || !result.request) throw new Error(result.error ?? 'Unable to send the person request');
+    const pushDevices = result.pushDevices ?? 0;
+    const delivery = pushDevices > 0
+      ? `A push notification went to ${pushDevices} of their device${pushDevices === 1 ? '' : 's'}.`
+      : 'They have not turned on push notifications, so they will see it the next time they open Chat AX.';
+    return `Sent a request to ${input.recipientEmail}. ${delivery}`;
+  }
+
+  private async stageAgentToolApproval(
+    authority: { actorId: string; actorEmail: string; actorName: string },
+    toolName: GatedAgentTool,
+    argumentsJson: string,
+    operationId: string,
+  ): Promise<PendingMcpAction> {
+    const action: PendingMcpAction = {
+      id: crypto.randomUUID(),
+      kind: 'agent-tool',
+      operationId,
+      actorId: authority.actorId,
+      requesterId: authority.actorId,
+      requesterEmail: authority.actorEmail,
+      connectorOwnerEmail: authority.actorEmail,
+      toolName,
+      argumentsJson,
+      argumentsDigest: await argumentsDigest(argumentsJson),
+      resultVisibility: 'room',
+      expiresAt: Date.now() + approvalLifetimeMilliseconds,
+      status: 'pending',
+    };
+    await this.ctx.storage.transaction(async (transaction) => {
+      await transaction.put(`mcp-pending:${action.id}`, action);
+      await this.appendApprovalLog(transaction, action, 'requested');
+    });
+    this.announceChange();
+    return action;
+  }
+
+  private async runApprovedAgentTool(action: PendingMcpAction): Promise<string> {
+    const authority = { actorId: action.requesterId, actorEmail: action.requesterEmail, actorName: action.requesterEmail.split('@')[0] };
+    const input: unknown = JSON.parse(action.argumentsJson);
+    if (action.toolName === 'request_person')
+      return this.sendPersonRequest(authority, approvedPersonRequest.parse(input), action.operationId);
+    if (action.toolName === 'delete_file') {
+      const { id } = z.object({ id: z.string().min(1) }).parse(input);
+      const result = await this.nativeResourceLane.run(() => this.nativeResourceTool(action.operationId, 'files', 'delete', { id }, true));
+      return result.content.map((part) => part.text).join('\n') || `Deleted file ${id}.`;
+    }
+    throw new Error(`${action.toolName} cannot run from an approval`);
   }
 
   private async stageConnectorApproval(
@@ -1494,8 +1559,8 @@ export class AgentDO extends DurableObject<AgentEnv> {
     if (decision === 'deny') return Response.json({ status: 'denied' });
     const action = decided.action;
     try {
-      const execution = await executeMcpOnce(this.ctx.storage, `mcp-execution:${id}`, () =>
-        recordMcpExecution(
+      const execution = await executeMcpOnce(this.ctx.storage, `mcp-execution:${id}`, async () =>
+        action.kind === 'agent-tool' ? this.runApprovedAgentTool(action) : recordMcpExecution(
           this.ctx.storage,
           { operationId: action.operationId, invocationId: `approved:${id}`, actorId: action.actorId, toolName: action.toolName },
           () =>

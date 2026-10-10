@@ -13,6 +13,7 @@ export type PendingMcpAction = McpActionScope & {
   connectorOwnerEmail: string;
   argumentsJson: string;
   expiresAt: number;
+  kind?: 'connector' | 'agent-tool';
   status: 'pending' | 'denied' | 'not-executed' | 'outcome-unknown' | 'succeeded' | 'running' | 'failed';
 };
 
