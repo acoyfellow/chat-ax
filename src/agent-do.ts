@@ -1178,6 +1178,23 @@ export class AgentDO extends DurableObject<AgentEnv> {
           ),
       },
       {
+        name: 'list_people',
+        label: 'List people in this workspace',
+        description:
+          'List everyone who has used this workspace: their verified email and whether they turned on push notifications. Use it to find a teammate\'s email before request_person instead of guessing.',
+        parameters: emptyParameters,
+        replay: 'safe' as const,
+        execute: async () => {
+          const room = this.env.ROOM.get(this.env.ROOM.idFromName('agent-coordinator-v1'));
+          const response = await room.fetch('https://room/people');
+          const { people } = z.object({ people: z.array(z.object({ email: z.string(), pushEnabled: z.boolean() })) }).parse(await response.json());
+          const text = people.length
+            ? people.map((person) => `${person.email} · push ${person.pushEnabled ? 'on' : 'off'}`).join('\n')
+            : 'Nobody has used this workspace yet.';
+          return { content: [{ type: 'text' as const, text }], details: { people } };
+        },
+      },
+      {
         name: 'request_person',
         label: 'Request help from a person',
         description:
@@ -1216,17 +1233,16 @@ export class AgentDO extends DurableObject<AgentEnv> {
               agentId: identity.agentId,
             }),
           });
-          const result = await response.json<{ request?: { id: string }; error?: string }>();
+          const result = await response.json<{ request?: { id: string }; pushDevices?: number; error?: string }>();
           if (!response.ok || !result.request)
             throw new Error(result.error ?? 'Unable to send the person request');
+          const pushDevices = result.pushDevices ?? 0;
+          const delivery = pushDevices > 0
+            ? `A push notification went to ${pushDevices} of their device${pushDevices === 1 ? '' : 's'}.`
+            : 'They have not turned on push notifications, so they will see it the next time they open Chat AX.';
           return {
-            content: [
-              {
-                type: 'text' as const,
-                text: `Sent an approval request to ${input.recipientEmail}.`,
-              },
-            ],
-            details: { requestId: result.request.id, status: 'pending' },
+            content: [{ type: 'text' as const, text: `Sent a request to ${input.recipientEmail}. ${delivery}` }],
+            details: { requestId: result.request.id, status: 'pending', pushDevices },
           };
         },
       },

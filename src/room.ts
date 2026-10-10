@@ -1272,6 +1272,7 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       return this.decideConnectorApproval(request, decision[1], decision[2] === 'approve' ? 'approve' : 'deny');
     if (request.method === 'POST' && url.pathname === '/connector-approvals/notify')
       return this.notifyConnectorApproval(request);
+    if (request.method === 'GET' && url.pathname === '/people') return Response.json({ people: await this.workspacePeople() });
     if (request.method === 'GET' && url.pathname === '/people/by-email') {
       const email = url.searchParams.get('email')?.trim().toLowerCase() ?? '';
       const person = email ? await this.state.storage.get<{ id: string }>(`person:${email}`) : undefined;
@@ -2657,6 +2658,14 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
     return new Response(response.body, { status: response.status, headers: response.headers });
   }
 
+  private async workspacePeople(): Promise<{ email: string; pushEnabled: boolean }[]> {
+    const people = await this.state.storage.list<{ id: string; email: string }>({ prefix: 'person:' });
+    const pushOwners = new Set((await this.pushSubscriptions()).map((item) => item.ownerEmail));
+    return [...people.values()]
+      .map((person) => ({ email: person.email, pushEnabled: pushOwners.has(person.email) }))
+      .sort((left, right) => left.email.localeCompare(right.email));
+  }
+
   private async rememberPerson(person: { id: string; email: string }): Promise<void> {
     const key = `person:${person.email}`;
     const known = await this.state.storage.get<{ id: string }>(key);
@@ -3442,7 +3451,8 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       },
       input.recipientEmail,
     );
-    return Response.json({ request: item }, { status: 202 });
+    const pushDevices = (await this.pushSubscriptions()).filter((subscription) => subscription.ownerEmail === input.recipientEmail).length;
+    return Response.json({ request: item, pushDevices }, { status: 202 });
   }
 
   private async updatePersonRequest(
