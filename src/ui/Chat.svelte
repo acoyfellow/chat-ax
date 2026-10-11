@@ -41,6 +41,23 @@
   let savingSettings = $state(false);
   let settingsOpen = $state(false);
   let paletteTab = $state('account');
+  let activity = $state([]);
+  let activityError = $state('');
+  async function loadActivity() {
+    const threadId = threadLens?.current?.id;
+    if (!threadId) return;
+    activityError = '';
+    const response = await fetch(`/api/agent-activity?threadId=${encodeURIComponent(threadId)}`);
+    if (!response.ok) {
+      activityError = 'Could not load activity.';
+      return;
+    }
+    const body = await response.json();
+    activity = body.activity ?? [];
+  }
+  const activityWho = (item) => item.speakerEmail ?? (item.source === 'job' ? 'a recurring job' : 'another agent');
+  const activityRanAs = (item) => item.connectorOwnerEmail && item.connectorOwnerEmail !== item.speakerEmail ? ` · ran as ${item.connectorOwnerEmail}` : '';
+  const activityTime = (at) => new Date(at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
   let theme = $state('light');
   let error = $state('');
   let threadLoading = $state(false);
@@ -990,8 +1007,8 @@
       <button class="close" aria-label="Close command palette" title="Close command palette" onclick={() => (settingsOpen = false)}><X size={20} aria-hidden="true" /></button>
     </div>
     <nav class="palette-tabs" aria-label="Command palette sections">
-      {#each [['account', 'Account'], ['settings', 'Settings'], ['tools', 'Tools'], ['skills', 'Skills'], ['files', 'Files'], ['state', 'State'], ['jobs', 'Jobs']] as [id, label]}
-        <button class:active={paletteTab === id} onclick={() => (paletteTab = id)}>{label}</button>
+      {#each [['account', 'Account'], ['settings', 'Settings'], ['tools', 'Tools'], ['skills', 'Skills'], ['files', 'Files'], ['state', 'State'], ['jobs', 'Jobs'], ['activity', 'Activity']] as [id, label]}
+        <button class:active={paletteTab === id} onclick={() => { paletteTab = id; if (id === 'activity') safely(loadActivity); }}>{label}</button>
       {/each}
     </nav>
     <div class="strategy-list">
@@ -1179,6 +1196,22 @@
         {/each}
       </section>
     {/if}
+    {#if paletteTab === 'activity'}
+      <section class="settings-section activity" aria-labelledby="activity-heading">
+        <div class="section-heading"><h3 id="activity-heading">What this agent did</h3><button class="quiet" onclick={() => safely(loadActivity)}>Refresh</button></div>
+        {#if activityError}<p class="muted">{activityError}</p>{/if}
+        {#if !activity.length && !activityError}<p class="muted">No tool calls yet.</p>{/if}
+        <ol class="activity-list">
+          {#each activity as item (item.id)}
+            <li class="activity-item" data-outcome={item.outcome} data-activity-id={item.id}>
+              <div class="section-heading"><strong>{item.kind === 'approval' ? `Approval: ${item.toolName}` : item.toolName}</strong><span class="activity-outcome">{item.outcome}</span></div>
+              <div class="muted">{activityWho(item)}{activityRanAs(item)} · {activityTime(item.at)}{item.durationMs !== undefined ? ` · ${item.durationMs} ms` : ''}</div>
+              {#if item.private}<div class="muted">Details are private to the people involved.</div>{:else}<code class="activity-arguments">{item.argumentsJson}</code>{/if}
+            </li>
+          {/each}
+        </ol>
+      </section>
+    {/if}
     </div>
   </aside>
 </main>
@@ -1358,4 +1391,10 @@
   @media (prefers-color-scheme: dark) { :global(:root) { --surface: #101010; --surface-secondary: #181818; --surface-raised: #242424; --text: #f5f5f5; --text-secondary: #a0a0a0; --border: #303030; --border-strong: #707070; --focus: #78b7ff; --error: #ff7770; } }
   @media (max-width: 640px) { header { padding-inline: 1rem; } .presence-label, .stress-badge { display: none; } .conversation { padding-bottom: 2rem; } .user { width: 90%; } .avatar-setting { grid-template-columns: 44px minmax(0, 1fr); } .avatar-setting button { grid-column: 1 / -1; } textarea, input, select { font-size: 16px; } }
   @media (prefers-reduced-motion: reduce) { aside { transition: none; } .thinking span, :global(.spin) { animation: none; } }
+  .activity-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .activity-item { display: grid; gap: 4px; padding: 8px 10px; border: 1px solid var(--line, rgba(127,127,127,.25)); border-radius: 8px; }
+  .activity-item[data-outcome='error'], .activity-item[data-outcome='failed'], .activity-item[data-outcome='denied'] { border-color: rgba(220, 70, 70, .5); }
+  .activity-item[data-outcome='held'] { border-color: rgba(230, 160, 40, .6); }
+  .activity-outcome { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .activity-arguments { display: block; white-space: pre-wrap; word-break: break-all; font-size: 12px; opacity: .85; }
 </style>

@@ -5,6 +5,7 @@ import { promptWithSpeaker, type SpeakerConnectorStatus } from './turn-speaker';
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
 import { DurableObject, tracing } from 'cloudflare:workers';
+import { type ActivityEntry, type ActivityOutcome, activityFor, activityKey, activityKeyPrefix, activityLimit, redactedArguments } from './activity-log';
 import { agentTraceName, type AgentTraceIdentity, approvalAttributes, type ApprovalTraceStage, chatSpanFinished, identityAttributes, traced } from './agent-tracing';
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from '@earendil-works/pi-ai/providers/faux';
 import { createModels } from '@earendil-works/pi-ai/models';
@@ -29,7 +30,7 @@ import {
   isThinkingLevel,
   normalizeSystemPrompt,
 } from './chat-settings';
-import { DurableTurnRuntime, type TurnInvocation, type TurnTool } from './pi/durable/turn-runtime';
+import { DurableTurnRuntime, type TurnInvocation, type TurnTool, type TurnToolCall } from './pi/durable/turn-runtime';
 import { toolArgumentsDetail, toolResultDetail } from './tool-activity-detail';
 import { workersAI } from './pi/providers/workers-ai';
 import type { Provider } from '@earendil-works/pi-ai';
@@ -144,6 +145,13 @@ export type AgentResources = {
   tools: unknown[];
   queue: unknown[];
 };
+type ActivityStorage = Pick<DurableObjectStorage, 'put' | 'list' | 'delete'>;
+
+function connectorOwnerArgument(value: unknown): string | undefined {
+  const parsed = z.object({ connectorOwnerEmail: z.string().email().optional() }).safeParse(value);
+  return parsed.success ? parsed.data.connectorOwnerEmail?.toLowerCase() : undefined;
+}
+
 export type NativeAgentToolReceipt = {
   id: string;
   operationId: string;
@@ -408,6 +416,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
       thinkingLevel: 'low',
       tools: () => this.tools(),
       tracer: tracing,
+      onToolCall: (call) => this.recordToolActivity(call),
       instructions: async () => {
         const configured = (await this.settings()).systemPrompt;
         return `${configured}\n\n${nativeAgentCapabilityPrompt}`;
@@ -1345,7 +1354,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
             const approval = await this.stageConnectorApproval(authority, ownerEmail, input.name, canonicalArguments(input.argumentsJson), invocation.operationId);
             return {
               content: [{ type: 'text' as const, text: `Asked ${ownerEmail} to approve ${input.name}. Nothing has run. It runs once, as ${ownerEmail}, only if they approve.` }],
-              details: { approvalId: approval.id, status: 'pending', connectorOwnerEmail: ownerEmail },
+              details: { approvalId: approval.id, status: 'pending', held: true, connectorOwnerEmail: ownerEmail },
             };
           }
           const arguments_ = input.argumentsJson?.trim()
@@ -1513,13 +1522,56 @@ export class AgentDO extends DurableObject<AgentEnv> {
     });
   }
 
+  private async recordToolActivity(call: TurnToolCall): Promise<void> {
+    const message = (await this.messages()).find((candidate) => candidate.id === call.operationId);
+    const speakerEmail = message?.source === 'person' ? message.authorEmail?.toLowerCase() ?? null : null;
+    const ownerFromArguments = call.toolName === 'call_mcp' ? connectorOwnerArgument(call.arguments) : undefined;
+    await this.putActivity(this.ctx.storage, {
+      id: call.invocationId,
+      at: new Date().toISOString(),
+      kind: 'tool',
+      toolName: call.toolName,
+      speakerId: message?.source === 'person' ? message.authorId ?? null : null,
+      speakerEmail,
+      source: message?.source ?? 'agent',
+      connectorOwnerEmail: call.toolName === 'call_mcp' || call.toolName === 'list_mcp_tools' ? ownerFromArguments ?? speakerEmail : null,
+      argumentsJson: redactedArguments(call.arguments),
+      outcome: call.held ? 'held' : call.isError ? 'error' : 'ok',
+      durationMs: call.durationMs,
+    });
+  }
+
+  private async putActivity(storage: ActivityStorage, entry: ActivityEntry): Promise<void> {
+    await storage.put(activityKey(entry), entry);
+    const keys = [...(await storage.list({ prefix: activityKeyPrefix })).keys()];
+    if (keys.length > activityLimit) await storage.delete(keys.slice(0, keys.length - activityLimit));
+  }
+
+  private async approvalActivity(storage: ActivityStorage, action: PendingMcpAction, stage: Parameters<typeof approvalLogLine>[1]): Promise<void> {
+    const outcome: Record<typeof stage, ActivityOutcome> = { requested: 'held', approved: 'approved', denied: 'denied', ran: 'ran', failed: 'failed' };
+    await this.putActivity(storage, {
+      id: `${action.id}:${stage}`,
+      at: new Date().toISOString(),
+      kind: 'approval',
+      toolName: action.toolName,
+      speakerId: action.requesterId,
+      speakerEmail: action.requesterEmail.toLowerCase(),
+      source: 'person',
+      connectorOwnerEmail: action.connectorOwnerEmail.toLowerCase(),
+      argumentsJson: redactedArguments(action.argumentsJson),
+      outcome: outcome[stage],
+      approvalId: action.id,
+    });
+  }
+
   private async appendApprovalLog(
-    transaction: { get<T>(key: string): Promise<T | undefined>; put<T>(key: string, value: T): Promise<void> },
+    transaction: ActivityStorage & { get<T>(key: string): Promise<T | undefined> },
     action: PendingMcpAction,
     stage: Parameters<typeof approvalLogLine>[1],
     detail = '',
   ): Promise<void> {
     this.traceApprovalStage(action, stage);
+    await this.approvalActivity(transaction, action, stage);
     const messages = (await transaction.get<ChatMessage[]>('resource:messages')) ?? [];
     const entry: ChatMessage = {
       id: `mcp-${stage}:${action.id}`,
@@ -2153,6 +2205,11 @@ export class AgentDO extends DurableObject<AgentEnv> {
           .filter((receipt) => receipt.actorId === actorId)
           .sort((left, right) => right.startedAt.localeCompare(left.startedAt)),
       });
+    }
+    if (request.method === 'GET' && url.pathname === '/activity') {
+      const viewer = z.object({ id: z.string().min(1), email: z.string().email() }).parse({ id: url.searchParams.get('viewerId'), email: url.searchParams.get('viewerEmail') });
+      const entries = [...(await this.ctx.storage.list<ActivityEntry>({ prefix: activityKeyPrefix, reverse: true, limit: activityLimit })).values()];
+      return Response.json({ activity: activityFor(entries, viewer) });
     }
     if (request.method === 'GET' && url.pathname === '/mcp-receipts') {
       const actorId = url.searchParams.get('actorId');

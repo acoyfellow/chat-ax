@@ -211,6 +211,21 @@ try {
   const requestsAfter = (await approvalsFor(people.jordan)).personRequests?.length ?? 0;
   record('The agent messages another person', 'held for Sam to approve; Jordan gets nothing yet', `approval ${heldRequest?.status ?? 'missing'}, Jordan requests ${requestsBefore} → ${requestsAfter}`, heldRequest?.status === 'pending' && requestsAfter === requestsBefore);
 
+  const secretArgument = ['Bear', 'er ', 'activity-proof-', crypto.randomUUID()].join('');
+  await turn(people.jordan, agentId, mcpCall(JSON.stringify({ repo: 'jordan/private', note: secretArgument })));
+  const activityAs = async (person) => (await api(person, `/api/agent-activity?threadId=${encodeURIComponent(agentId)}`)).body?.activity ?? [];
+  const jordanActivity = await activityAs(people.jordan);
+  const samActivity = await activityAs(people.sam);
+  const jordanCall = jordanActivity.find((item) => item.toolName === 'call_mcp' && item.argumentsJson?.includes('jordan/private'));
+  const samViewOfJordanCall = samActivity.find((item) => item.id === jordanCall?.id);
+  record('Jordan opens Activity', 'his call is listed with its exact arguments', jordanCall ? jordanCall.argumentsJson : 'missing', Boolean(jordanCall) && jordanCall.speakerEmail === people.jordan.email);
+  record('Sam opens Activity and looks at Jordan\u2019s call', 'he sees it happened, not the details', samViewOfJordanCall ? `private=${samViewOfJordanCall.private}, arguments=${samViewOfJordanCall.argumentsJson}` : 'not listed', samViewOfJordanCall?.private === true && samViewOfJordanCall.argumentsJson === null);
+  const everyActivity = JSON.stringify([jordanActivity, samActivity]);
+  const tokenLeaks = [secretArgument, people.sam.token, people.jordan.token].filter((secret) => everyActivity.includes(secret));
+  record('Activity never shows token text', 'no bearer text or connector tokens', tokenLeaks.length ? `${tokenLeaks.length} leaked` : 'none found', tokenLeaks.length === 0 && everyActivity.includes('[redacted]'));
+  const approvalSteps = new Set(jordanActivity.filter((item) => item.kind === 'approval').map((item) => item.outcome));
+  record('Approvals show every step in Activity', 'held, approved, ran and denied are listed', [...approvalSteps].join(', ') || 'none', ['held', 'approved', 'ran', 'denied'].every((step) => approvalSteps.has(step)));
+
   const request = await api(people.sam, '/api/person-requests', { method: 'POST', body: JSON.stringify({ recipientEmail: people.jordan.email, title: 'Review MR 42', details: 'Please review https://gitlab.example.com/team/app/-/merge_requests/42' }) });
   const requestId = request.body.request.id;
   const samAccepts = await api(people.sam, `/api/person-requests/${requestId}/accept`, { method: 'POST', body: '{}' });

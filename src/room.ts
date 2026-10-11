@@ -1639,6 +1639,19 @@ export class ChatRoomDO extends DurableObject<RoomEnv> {
       );
     if (request.method === 'POST' && url.pathname === '/communications')
       return this.serializeTreeMutation(() => this.communicate(request));
+    if (request.method === 'GET' && url.pathname.startsWith('/agent-activity/')) {
+      const threadId = decodeURIComponent(url.pathname.slice('/agent-activity/'.length));
+      const tree = await this.threadTree();
+      if (!tree.nodes.some((candidate) => candidate.id === threadId))
+        return Response.json({ error: 'unknown agent' }, { status: 404 });
+      const viewerId = request.headers.get('x-actor-id');
+      const viewerEmail = request.headers.get('x-actor-email');
+      if (!viewerId || !viewerEmail) return Response.json({ error: 'viewer is required' }, { status: 400 });
+      const response = await this.agent(threadId).fetch(
+        `https://agent/activity?viewerId=${encodeURIComponent(viewerId)}&viewerEmail=${encodeURIComponent(viewerEmail)}`,
+      );
+      return new Response(response.body, { status: response.status, headers: response.headers });
+    }
     if (request.method === 'GET' && url.pathname.startsWith('/agent-mcp-receipts/')) {
       const threadId = decodeURIComponent(url.pathname.slice('/agent-mcp-receipts/'.length));
       const tree = await this.threadTree();

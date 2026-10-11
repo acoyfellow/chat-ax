@@ -52,7 +52,24 @@ export type TurnRuntimeOptions = {
   instructions: () => Promise<string>;
   tools: () => TurnTool[];
   tracer?: TraceTracer;
+  onToolCall?: (call: TurnToolCall) => Promise<void>;
 };
+
+export type TurnToolCall = {
+  toolName: string;
+  operationId: string;
+  invocationId: string;
+  arguments: unknown;
+  isError: boolean;
+  held: boolean;
+  durationMs: number;
+};
+
+function heldResult(result: unknown): boolean {
+  if (result === null || typeof result !== 'object' || !('details' in result)) return false;
+  const details = result.details;
+  return details !== null && typeof details === 'object' && 'held' in details && details.held === true;
+}
 
 function textOf(entry: EntryRecord | undefined): string {
   const message = entry?.model?.[0];
@@ -182,9 +199,18 @@ export class DurableTurnRuntime {
         const operationId = this.activeOperation ?? `recovered:${api.conversationId}`;
         const signal = callContext.abortSignal;
         return traced(this.options.tracer, `execute_tool ${tool.name}`, toolAttributes(tool.name, api.callId, args), async () => {
-          const work = tool.execute(args as never, { operationId, invocationId: api.callId, signal });
-          const result = signal ? await Promise.race([work, aborted(signal)]) : await work;
-          return { content: result.content, isError: result.isError ?? false };
+          const startedAt = Date.now();
+          const report = (isError: boolean, held = false) =>
+            this.options.onToolCall?.({ toolName: tool.name, operationId, invocationId: api.callId, arguments: args, isError, held, durationMs: Date.now() - startedAt }).catch(() => undefined);
+          try {
+            const work = tool.execute(args as never, { operationId, invocationId: api.callId, signal });
+            const result = signal ? await Promise.race([work, aborted(signal)]) : await work;
+            await report(result.isError ?? false, heldResult(result));
+            return { content: result.content, isError: result.isError ?? false };
+          } catch (error) {
+            await report(true);
+            throw error;
+          }
         });
       },
     }));

@@ -519,6 +519,16 @@ app.get('/api/agents/:agentId/live', async (context) => {
   return stub.fetch('https://agent/live', context.req.raw);
 });
 
+app.get('/api/agent-activity', async (context) => {
+  const threadId = context.req.query('threadId');
+  if (!threadId) return context.json({ error: 'threadId is required' }, 400);
+  const identity = context.get('identity');
+  const response = await room(context.env).fetch(`https://room/agent-activity/${encodeURIComponent(threadId)}`, {
+    headers: { 'x-actor-id': verifiedActorId(identity), 'x-actor-email': identity.email.toLowerCase() },
+  });
+  return new Response(response.body, response);
+});
+
 app.get('/api/agent-mcp-receipts', async (context) => {
   const threadId = context.req.query('threadId');
   if (!threadId) return context.json({ error: 'threadId is required' }, 400);
