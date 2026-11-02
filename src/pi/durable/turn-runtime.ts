@@ -5,12 +5,12 @@ import {
   defineExtension,
   Harness,
   LiveDoc,
-  type AgentEvent,
   type Conversation,
+  type ConversationView,
   type EntryRecord,
   type ToolRegistration,
+  type LiveState,
   ToolResultEntry,
-  watchEvents,
 } from '@earendil-works/pi-durable';
 import { SqliteStorage } from '@earendil-works/pi-durable/storage/sqlite';
 import { durableObjectSqliteDatabase, type SqlStorage } from './do-sqlite-database';
@@ -206,7 +206,7 @@ export class DurableTurnRuntime {
             const work = tool.execute(args as never, { operationId, invocationId: api.callId, signal });
             const result = signal ? await Promise.race([work, aborted(signal)]) : await work;
             await report(result.isError ?? false, heldResult(result));
-            return { content: result.content, isError: result.isError ?? false };
+            return { output: result.content, isError: result.isError ?? false };
           } catch (error) {
             await report(true);
             throw error;
@@ -231,59 +231,111 @@ export class DurableTurnRuntime {
     return this.harness;
   }
 
-  private async watch(harness: Harness, root: Conversation): Promise<void> {
-    const stream = await watchEvents(harness, root.id, context);
-    stream.start(async (events) => {
-      for (const event of events) this.forward(event);
+  private async watch(_harness: Harness, root: Conversation): Promise<void> {
+    const watch = await root.watch(context);
+    this.markSeen(watch.value);
+    watch.start(async (call) => {
+      if (call.kind === 'value') this.forward(call.value);
     });
   }
 
-  private forward(event: AgentEvent): void {
+  private readonly seenEntries = new Set<string>();
+  private readonly startedCalls = new Set<string>();
+  private readonly endedCalls = new Set<string>();
+  private streamedThinking = '';
+
+  private markSeen(view: ConversationView): void {
+    for (const entry of view.entries) this.seenEntries.add(String(entry.id));
+    for (const slot of liveOf(view).tools ?? []) {
+      this.startedCalls.add(slot.callId);
+      if (slot.status === 'done') this.endedCalls.add(slot.callId);
+    }
+  }
+
+  private forward(view: ConversationView): void {
     const operationId = this.activeOperation;
-    if (!operationId) return;
+    if (!operationId) {
+      this.markSeen(view);
+      return;
+    }
     const emit = (value: TurnEvent) => {
       for (const listener of this.listeners) listener(value);
     };
-    if (event.type === 'message_start' && event.message.role === 'assistant') {
+    const live = liveOf(view);
+    const newEntries = view.entries.filter((entry) => !this.seenEntries.has(String(entry.id)));
+    for (const entry of newEntries) {
+      this.seenEntries.add(String(entry.id));
+      const message = entry.model?.[0];
+      if (message?.role !== 'assistant') continue;
+      const finalText = blockText(message.content, 'text');
+      if (finalText.startsWith(this.streamedText) && finalText.length > this.streamedText.length)
+        emit({ type: 'text_delta', operationId, delta: finalText.slice(this.streamedText.length) });
       this.streamedText = '';
-      for (const block of event.message.content) {
-        if (block.type === 'text' && block.text) {
-          this.streamedText += block.text;
-          emit({ type: 'text_delta', operationId, delta: block.text });
-        }
-        if (block.type === 'thinking' && block.thinking) emit({ type: 'thinking_delta', operationId, delta: block.thinking });
+      this.streamedThinking = '';
+    }
+    const partial = live.generation?.message;
+    if (partial) {
+      const text = blockText(partial.content, 'text');
+      const thinking = blockText(partial.content, 'thinking');
+      if (!text.startsWith(this.streamedText)) this.streamedText = '';
+      if (!thinking.startsWith(this.streamedThinking)) this.streamedThinking = '';
+      if (text.length > this.streamedText.length) {
+        emit({ type: 'text_delta', operationId, delta: text.slice(this.streamedText.length) });
+        this.streamedText = text;
+      }
+      if (thinking.length > this.streamedThinking.length) {
+        emit({ type: 'thinking_delta', operationId, delta: thinking.slice(this.streamedThinking.length) });
+        this.streamedThinking = thinking;
       }
     }
-    if (event.type === 'message_end') {
-      const message = event.entry.model?.[0];
-      if (message?.role === 'assistant') {
-        const finalText = message.content.flatMap((block) => (block.type === 'text' ? [block.text] : [])).join('');
-        if (finalText.startsWith(this.streamedText) && finalText.length > this.streamedText.length)
-          emit({ type: 'text_delta', operationId, delta: finalText.slice(this.streamedText.length) });
-        this.streamedText = '';
+    for (const slot of live.tools ?? []) {
+      if (!this.startedCalls.has(slot.callId)) {
+        this.startedCalls.add(slot.callId);
+        emit({ type: 'tool_start', operationId, toolCallId: slot.callId, toolName: slot.name, arguments: toolArguments(view, slot.callId) });
       }
-    }
-    if (event.type === 'message_update') {
-      for (const change of event.changes) {
-        if (change.type === 'text_delta') {
-          this.streamedText += change.delta;
-          emit({ type: 'text_delta', operationId, delta: change.delta });
-        }
-        if (change.type === 'thinking_delta') emit({ type: 'thinking_delta', operationId, delta: change.delta });
+      if (slot.status === 'done' && !this.endedCalls.has(slot.callId)) {
+        this.endedCalls.add(slot.callId);
+        const entry = view.entries.find((candidate) => candidate.id === slot.entry);
+        const message = entry && ToolResultEntry.is(entry) ? entry.model?.[0] : undefined;
+        const result = message?.role === 'toolResult' ? message.content.filter(isJsonText).map((part) => part.text).join('\n') : undefined;
+        emit({
+          type: 'tool_end',
+          operationId,
+          toolCallId: slot.callId,
+          error: message?.role === 'toolResult' ? message.isError : true,
+          result,
+        });
       }
-    }
-    if (event.type === 'tool_execution_start')
-      emit({ type: 'tool_start', operationId, toolCallId: event.toolCallId, toolName: event.toolName, arguments: event.args });
-    if (event.type === 'tool_execution_end') {
-      const message = event.entry && ToolResultEntry.is(event.entry) ? event.entry.model?.[0] : undefined;
-      const result = message?.role === 'toolResult' ? message.content.filter(isJsonText).map((part) => part.text).join('\n') : undefined;
-      emit({
-        type: 'tool_end',
-        operationId,
-        toolCallId: event.toolCallId,
-        error: message?.role === 'toolResult' ? message.isError : true,
-        result,
-      });
     }
   }
+}
+
+function liveOf(view: ConversationView): LiveState {
+  const doc = view.docs['pi.live'];
+  return isLiveState(doc) ? doc : {};
+}
+
+function isLiveState(value: unknown): value is LiveState {
+  if (typeof value !== 'object' || value === null) return false;
+  return !('tools' in value) || Array.isArray(value.tools);
+}
+
+function blockText(content: readonly unknown[], kind: 'text' | 'thinking'): string {
+  return content
+    .map((block) => {
+      if (typeof block !== 'object' || block === null || !('type' in block) || block.type !== kind) return '';
+      if (kind === 'text') return 'text' in block && typeof block.text === 'string' ? block.text : '';
+      return 'thinking' in block && typeof block.thinking === 'string' ? block.thinking : '';
+    })
+    .join('');
+}
+
+function toolArguments(view: ConversationView, callId: string): unknown {
+  for (const entry of [...view.entries].reverse()) {
+    const message = entry.model?.[0];
+    if (message?.role !== 'assistant') continue;
+    const call = message.content.find((block) => block.type === 'toolCall' && block.id === callId);
+    if (call && call.type === 'toolCall') return call.arguments;
+  }
+  return undefined;
 }

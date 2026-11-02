@@ -1,7 +1,7 @@
 import type { SqliteDatabase, SqliteExecutor, SqliteValue } from '@earendil-works/pi-durable/storage/sqlite';
 
 export type SqlStorage = {
-  sql: { exec(query: string, ...bindings: unknown[]): { toArray(): unknown[] } };
+  sql: { exec(query: string, ...bindings: unknown[]): { toArray(): unknown[]; rowsWritten: number } };
   transaction<T>(closure: () => Promise<T>): Promise<T>;
 };
 
@@ -20,6 +20,9 @@ function executor(storage: SqlStorage): SqliteExecutor {
     },
     async run(sql, ...params) {
       storage.sql.exec(sql, ...params);
+    },
+    async runCounted(sql, ...params) {
+      return storage.sql.exec(sql, ...params).rowsWritten;
     },
     async get<T extends object>(sql: string, ...params: SqliteValue[]) {
       return rows<T>(storage, sql, params)[0];
@@ -41,6 +44,7 @@ export function durableObjectSqliteDatabase(storage: SqlStorage): SqliteDatabase
   return {
     exec: (sql) => serialized(() => direct.exec(sql)),
     run: (sql, ...params) => serialized(() => direct.run(sql, ...params)),
+    runCounted: (sql, ...params) => serialized(() => direct.runCounted(sql, ...params)),
     get: (sql, ...params) => serialized(() => direct.get(sql, ...params)),
     all: (sql, ...params) => serialized(() => direct.all(sql, ...params)),
     transaction: (callback) => serialized(() => storage.transaction(() => callback(direct))),
