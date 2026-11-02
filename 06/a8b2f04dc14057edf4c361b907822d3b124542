@@ -1,0 +1,31 @@
+src/agent-do.ts
+  s_4f65335ba8955f::t_f9054dae3dc1bb 1-2,171-172,204-205,1186-1238
+src/connector-doctor.test.ts
+  s_4f65335ba8955f::t_8e234cea2c3d39 1-39
+src/connector-doctor.ts
+  s_4f65335ba8955f::t_067d2c9c1ffa99 1-49
+src/engine-source.test.ts
+  s_4f65335ba8955f::t_6ae0f9fa810fbe 1-20
+src/engine-source.ts
+  s_4f65335ba8955f::t_8f811d7b0a790e 1-51
+src/native-agent-tools.ts
+  s_4f65335ba8955f::t_d574db850d9122 47
+src/room.ts
+  s_4f65335ba8955f::t_347ccdbfd87aaf 266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "06a8b2f04dc14057edf4c361b907822d3b124542",
+  "prompts": {},
+  "sessions": {
+    "s_4f65335ba8955f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0428c-86e7-7e26-bc73-8a8b9b5c6d7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

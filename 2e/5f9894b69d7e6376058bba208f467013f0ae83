@@ -1,0 +1,31 @@
+scripts/e2e-security-boundary.mjs
+  s_bddf4eb8848d16::t_c86ed41dd03c92 193-213
+src/agent-do.ts
+  s_bddf4eb8848d16::t_a08fbc78900a22 1,206-213,586,798-802,1292,1294-1295,1391-1466,1562-1563
+src/agent-tool-gates.test.ts
+  s_bddf4eb8848d16::t_a2c249b51d910a 1-25
+src/agent-tool-gates.ts
+  s_bddf4eb8848d16::t_6594190728e7f1 1-22
+src/connector-approvals.ts
+  s_bddf4eb8848d16::t_e0407bb64afad0 49,53-55
+src/mcp-approval.ts
+  s_bddf4eb8848d16::t_9aa462452cf9af 16
+src/ui/Chat.svelte
+  s_bddf4eb8848d16::t_ef626ea57d8401 915-919
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2e5f9894b69d7e6376058bba208f467013f0ae83",
+  "prompts": {},
+  "sessions": {
+    "s_bddf4eb8848d16": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0de5b-f971-75f6-97ad-8153da509084",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

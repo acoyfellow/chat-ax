@@ -1,0 +1,313 @@
+.github/workflows/ci.yml
+  s_4f65335ba8955f::t_382415a3bd4c04 1-32
+.gitignore
+  s_4f65335ba8955f::t_52552ebdfcbd96 1-12
+.npmrc
+  s_4f65335ba8955f::t_3a55f455871a76 1
+LICENSE
+  s_4f65335ba8955f::t_393c05e6cf114d 1-21
+README.md
+  s_4f65335ba8955f::t_0a46715ddec4b3 1-109
+SECURITY.md
+  s_4f65335ba8955f::t_43e65d07534f09 1-5
+biome.json
+  s_4f65335ba8955f::t_84bbfd508c5ab5 1-33
+build.mjs
+  s_4f65335ba8955f::t_e1456092578c1e 1-12
+docs/person-requests.md
+  s_4f65335ba8955f::t_bc88a08ee7ca7c 1-33
+docs/security.md
+  s_4f65335ba8955f::t_9ffd40680db66f 1-43
+features/chat-ax.feature
+  s_4f65335ba8955f::t_d7d1f8dc08baf5 1-199
+package-lock.json
+  s_4f65335ba8955f::t_0aa610c915d079 1-7825
+package.json
+  s_4f65335ba8955f::t_6e435526634a38 1-74
+scripts/audit-universal-mcp-coverage.mjs
+  s_4f65335ba8955f::t_3d832f903c443e 1-89
+scripts/e2e-agent-fleet-mcp.mjs
+  s_4f65335ba8955f::t_51d1651a96da65 1-34
+scripts/e2e-agent-isolation.mjs
+  s_4f65335ba8955f::t_0c7314f9fafc8f 1-201
+scripts/e2e-fleet-drag.mjs
+  s_4f65335ba8955f::t_500c5c1a103619 1-287
+scripts/e2e-local-a2a-army.mjs
+  s_4f65335ba8955f::t_1d7b24eddf1957 1-416
+scripts/e2e-mcp-realtime-authority.mjs
+  s_4f65335ba8955f::t_8c987e78a54e3a 1-136
+scripts/e2e-mcp-recovery.mjs
+  s_4f65335ba8955f::t_9ca29a28d860ba 1-53
+scripts/e2e-multiplayer-features.ts
+  s_4f65335ba8955f::t_eaa5c4d4d45c83 1-289
+scripts/e2e-multiplayer-mcp.ts
+  s_4f65335ba8955f::t_3008cd098acc09 1-70
+scripts/e2e-native-agent-tools.mjs
+  s_4f65335ba8955f::t_c1fb1b9a2ce3d5 1-233
+scripts/e2e-person-requests.ts
+  s_4f65335ba8955f::t_14cfa7781e6983 1-252
+scripts/e2e-pi-room.mjs
+  s_4f65335ba8955f::t_a7ab5a3b067a97 1-123
+scripts/e2e-universal-mcp.mjs
+  s_4f65335ba8955f::t_c0e23616236d13 1-418
+scripts/fixtures/mcp-recovery-worker.ts
+  s_4f65335ba8955f::t_ab75e155a5ef25 1-47
+scripts/remove-built-secrets.mjs
+  s_4f65335ba8955f::t_be4c85c878c490 1-23
+scripts/setup.mjs
+  s_4f65335ba8955f::t_35ef054a3f124b 1-254
+scripts/universal-mcp-route-policy.mjs
+  s_4f65335ba8955f::t_daf20fcc3ea6a6 1-79
+src/access-verification.test.ts
+  s_4f65335ba8955f::t_372a525c2eb99c 1-55
+src/agent-cancellation.ts
+  s_4f65335ba8955f::t_0b944634ed4850 1-14
+src/agent-capability.test.ts
+  s_4f65335ba8955f::t_5b0e5497d4bf0e 1-38
+src/agent-capability.ts
+  s_4f65335ba8955f::t_367109cb2a8e23 1-103
+src/agent-communication.test.ts
+  s_4f65335ba8955f::t_50613b5bfd3e1e 1-84
+src/agent-communication.ts
+  s_4f65335ba8955f::t_ba235b523923f3 1-84
+src/agent-context.test.ts
+  s_4f65335ba8955f::t_ecaed5c80cbf37 1-19
+src/agent-context.ts
+  s_4f65335ba8955f::t_276b7ba7d36c03 1-34
+src/agent-deletion.test.ts
+  s_4f65335ba8955f::t_e2544ddc5988b3 1-84
+src/agent-deletion.ts
+  s_4f65335ba8955f::t_3cf37984406439 1-17
+src/agent-do.test.ts
+  s_4f65335ba8955f::t_6575658b2ddcd2 1-109
+src/agent-do.ts
+  s_4f65335ba8955f::t_4588165acbe854 1-2004
+src/agent-identity.ts
+  s_4f65335ba8955f::t_d2592ac9283777 1-5
+src/agent-oracle.ts
+  s_4f65335ba8955f::t_a4bbc762fa5bb1 1-18
+src/agent-orchestration-policy.test.ts
+  s_4f65335ba8955f::t_fa4705ba5449b2 1-24
+src/agent-orchestration-policy.ts
+  s_4f65335ba8955f::t_7c2de357145282 1-19
+src/agent-private-resources.test.ts
+  s_4f65335ba8955f::t_736078900bbbab 1-20
+src/agent-private-resources.ts
+  s_4f65335ba8955f::t_17066d7d3dc8ae 1-11
+src/agent-runtime.test.ts
+  s_4f65335ba8955f::t_dd6bd43d6d91a3 1-118
+src/agent-runtime.ts
+  s_4f65335ba8955f::t_d9aeb55a3c8d52 1-67
+src/app.ts
+  s_4f65335ba8955f::t_98c6e6715e278c 1
+src/assets.d.ts
+  s_4f65335ba8955f::t_ad8306b661dc50 1-10
+src/auth.test.ts
+  s_4f65335ba8955f::t_ed80a23779d7cb 1-39
+src/auth.ts
+  s_4f65335ba8955f::t_9fafdfb5ccc7c1 1-177
+src/bounded-json-audit.test.ts
+  s_4f65335ba8955f::t_177126b59ac83a 1-67
+src/capability-executor.ts
+  s_4f65335ba8955f::t_f46189de48cac5 1-168
+src/capability-policy.test.ts
+  s_4f65335ba8955f::t_ac26091d89a102 1-99
+src/capability-policy.ts
+  s_4f65335ba8955f::t_a7cf82c29e7fb6 1-77
+src/chat-gateway-tools.test.ts
+  s_4f65335ba8955f::t_b436735ba31378 1-18
+src/chat-model-provider.test.ts
+  s_4f65335ba8955f::t_d87bb1464e872f 1-58
+src/chat-model-provider.ts
+  s_4f65335ba8955f::t_8f734d24a7fb93 1-69
+src/chat-settings.test.ts
+  s_4f65335ba8955f::t_9112ceb7093d9a 1-38
+src/chat-settings.ts
+  s_4f65335ba8955f::t_f2e2e38b26668a 1-109
+src/cloudflare-env.d.ts
+  s_4f65335ba8955f::t_d613843d66310d 1-13
+src/cloudflare.ts
+  s_4f65335ba8955f::t_314f1690a78b2d 1-3
+src/connector-token.ts
+  s_4f65335ba8955f::t_59ed42dfb591a9 1-12
+src/connector-vault.ts
+  s_4f65335ba8955f::t_562c9713862c5a 1-240
+src/deployment-config.test.ts
+  s_4f65335ba8955f::t_1b24c4f0173642 1-36
+src/deployment-config.ts
+  s_4f65335ba8955f::t_e701620a7e2017 1-68
+src/expiring-records.test.ts
+  s_4f65335ba8955f::t_0d20138f0bfd30 1-25
+src/expiring-records.ts
+  s_4f65335ba8955f::t_7a9a22ce3814bd 1-11
+src/fleet-operations.test.ts
+  s_4f65335ba8955f::t_306994fc14af73 1-73
+src/fleet-operations.ts
+  s_4f65335ba8955f::t_992621f9356ba0 1-130
+src/grant-crypto.test.ts
+  s_4f65335ba8955f::t_772dec3e0189b0 1-19
+src/grant-crypto.ts
+  s_4f65335ba8955f::t_8144a7ddd620b8 1-98
+src/live-socket.test.ts
+  s_4f65335ba8955f::t_569f7ab53f309f 1-68
+src/live-socket.ts
+  s_4f65335ba8955f::t_c148222959d328 1-95
+src/local-model.test.ts
+  s_4f65335ba8955f::t_8d5b0485429f81 1-14
+src/local-model.ts
+  s_4f65335ba8955f::t_c5bcbd3695f1e7 1-8
+src/mcp-approval.test.ts
+  s_4f65335ba8955f::t_1fa3e9efe97dc9 1-25
+src/mcp-approval.ts
+  s_4f65335ba8955f::t_39392f56a8afe5 1-49
+src/mcp-connector-client.ts
+  s_4f65335ba8955f::t_27c3cd5c0bb043 1-121
+src/mcp-connector.test.ts
+  s_4f65335ba8955f::t_4ca2011e0e102d 1-77
+src/mcp-connector.ts
+  s_4f65335ba8955f::t_271eb978bebf9a 1-103
+src/mcp-execution.ts
+  s_4f65335ba8955f::t_6d933cf5852c0d 1-24
+src/mcp-receipts.test.ts
+  s_4f65335ba8955f::t_850aea6e39b167 1-43
+src/mcp-receipts.ts
+  s_4f65335ba8955f::t_d61b566ca3e329 1-36
+src/mcp.test.ts
+  s_4f65335ba8955f::t_840afcd35ffe50 1-238
+src/mcp.ts
+  s_4f65335ba8955f::t_c8c68a8dee1a96 1-491
+src/native-agent-tools.ts
+  s_4f65335ba8955f::t_ff9cb263056c6a 1-47
+src/orchestrator-mcp.test.ts
+  s_4f65335ba8955f::t_1e5ed425437367 1-33
+src/orchestrator-mcp.ts
+  s_4f65335ba8955f::t_7f4ed4c50de17b 1-309
+src/person-requests.test.ts
+  s_4f65335ba8955f::t_d09f2c67d2aea7 1-115
+src/person-requests.ts
+  s_4f65335ba8955f::t_b6a80068dea9c1 1-214
+src/pi/durable/do-sqlite-database.test.ts
+  s_4f65335ba8955f::t_fdfa5039dab011 1-44
+src/pi/durable/do-sqlite-database.ts
+  s_4f65335ba8955f::t_023655ac40ad14 1-49
+src/pi/durable/test-storage.ts
+  s_4f65335ba8955f::t_2b40daaaf08d34 1-38
+src/pi/durable/turn-runtime.test.ts
+  s_4f65335ba8955f::t_10269e8fb6bf5c 1-114
+src/pi/durable/turn-runtime.ts
+  s_4f65335ba8955f::t_29523d54fedd4e 1-259
+src/pi/providers/workers-ai.ts
+  s_4f65335ba8955f::t_ff6b5a98e14be9 1-142
+src/presence.test.ts
+  s_4f65335ba8955f::t_e6ac4b83bac90f 1-47
+src/presence.ts
+  s_4f65335ba8955f::t_0e0c5d5bdd43a1 1-38
+src/production-proof.test.ts
+  s_4f65335ba8955f::t_3667c02a42628f 1-13
+src/production-proof.ts
+  s_4f65335ba8955f::t_b8ae0c43a72302 1-10
+src/pwa-icons.svg
+  s_4f65335ba8955f::t_cfc2ec41249475 1-13
+src/pwa.ts
+  s_4f65335ba8955f::t_62ee4c63655ab3 1-47
+src/readiness-proof.test.ts
+  s_4f65335ba8955f::t_2bd5517c12f535 1-61
+src/readiness-proof.ts
+  s_4f65335ba8955f::t_4263dde86d057b 1-37
+src/readiness.test.ts
+  s_4f65335ba8955f::t_4e2415228ffc20 1-37
+src/readiness.ts
+  s_4f65335ba8955f::t_2794a926619f9e 1-31
+src/review-workflow.test.ts
+  s_4f65335ba8955f::t_ed3756ab2f7b93 1-43
+src/review-workflow.ts
+  s_4f65335ba8955f::t_ff535fdd918dec 1-74
+src/room-skills.test.ts
+  s_4f65335ba8955f::t_2a92e192f44e53 1-70
+src/room-skills.ts
+  s_4f65335ba8955f::t_6101eaead62530 1-92
+src/room.ts
+  s_4f65335ba8955f::t_0021efccb385d2 1-4168
+src/safe-json.test.ts
+  s_4f65335ba8955f::t_beb778363edf2b 1-72
+src/safe-json.ts
+  s_4f65335ba8955f::t_6dba9aafe990b0 1-99
+src/setup-page.test.ts
+  s_4f65335ba8955f::t_894379818b665a 1-17
+src/setup-page.ts
+  s_4f65335ba8955f::t_6aecc7014d36ac 1-37
+src/shared-features.test.ts
+  s_4f65335ba8955f::t_3a6230e30c219c 1-27
+src/shared-features.ts
+  s_4f65335ba8955f::t_7cea0081445769 1-135
+src/strategies.test.ts
+  s_4f65335ba8955f::t_17a617a64af6a8 1-34
+src/strategies.ts
+  s_4f65335ba8955f::t_e80939fcb96a4a 1-313
+src/thread-tree.test.ts
+  s_4f65335ba8955f::t_75ca4d9870a9d5 1-34
+src/thread-tree.ts
+  s_4f65335ba8955f::t_dafd0ce47ed7d1 1-62
+src/tool-activity-detail.test.ts
+  s_4f65335ba8955f::t_56692e2a4cfa0e 1-24
+src/tool-activity-detail.ts
+  s_4f65335ba8955f::t_698d0f1356ff6e 1-44
+src/turn-authority.test.ts
+  s_4f65335ba8955f::t_7a0411724ea647 1-26
+src/turn-authority.ts
+  s_4f65335ba8955f::t_1b85371c96e77f 1-28
+src/ui-stress.test.ts
+  s_4f65335ba8955f::t_03ae8a22a9485b 1-22
+src/ui-stress.ts
+  s_4f65335ba8955f::t_c303d22885c4bd 1-89
+src/ui/AgentAvatar.svelte
+  s_4f65335ba8955f::t_9a3d116327e16f 1-273
+src/ui/AgentTree.svelte
+  s_4f65335ba8955f::t_1aaf361895b09e 1-483
+src/ui/AvatarLab.svelte
+  s_4f65335ba8955f::t_1075df8b4667e9 1-207
+src/ui/Chat.svelte
+  s_4f65335ba8955f::t_00ba2fa493bdc7 1-1309
+src/ui/Modal.svelte
+  s_4f65335ba8955f::t_309b2d0965fe5c 1-72
+src/ui/StyleLab.svelte
+  s_4f65335ba8955f::t_e3e8fb374bc51f 1-185
+src/ui/avatar-options.ts
+  s_4f65335ba8955f::t_304d586695a8dd 1-154
+src/ui/live-connection.ts
+  s_4f65335ba8955f::t_a6334f7e4abc8e 1-99
+src/universal-mcp.test.ts
+  s_4f65335ba8955f::t_e7925449f5d62a 1-190
+src/universal-mcp.ts
+  s_4f65335ba8955f::t_d60cf43242600e 1-638
+src/web-push.test.ts
+  s_4f65335ba8955f::t_24a88b6affc32f 1-93
+src/web-push.ts
+  s_4f65335ba8955f::t_f45f776c31e3e5 1-179
+src/worker.ts
+  s_4f65335ba8955f::t_5a0e5e8efbb9de 1-1589
+tsconfig.json
+  s_4f65335ba8955f::t_4ebfb10dc58292 1-15
+vite.config.ts
+  s_4f65335ba8955f::t_61ae93ee10a0e4 1-7
+wrangler.jsonc
+  s_4f65335ba8955f::t_60b4acdeeea0ed 1-23
+wrangler.test.jsonc
+  s_4f65335ba8955f::t_34fd777d1bc490 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4cffe2ae676a878c60a9ed34fcace373081c4ef6",
+  "prompts": {},
+  "sessions": {
+    "s_4f65335ba8955f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0428c-86e7-7e26-bc73-8a8b9b5c6d7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

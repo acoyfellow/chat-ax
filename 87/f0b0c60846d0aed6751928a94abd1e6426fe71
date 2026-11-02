@@ -1,0 +1,41 @@
+build.mjs
+  s_4f3d73861137de::t_0b264318bdc5dd 10
+package-lock.json
+  s_4f3d73861137de::t_47488d49f56f0f 12-14,1698-1700,2167-2169,2172,2174,2191-2193,2370-2372,2375-2376,2391-2393
+package.json
+  s_4f3d73861137de::t_f9b682c6a9ffbd 18-20
+scripts/e2e-agent-handoff-live.mjs
+  s_4f3d73861137de::t_ce854899c335c9 1-50
+src/agent-do.ts
+  s_4f3d73861137de::t_2dc09dcee1522e 104,106,1815,1818-1819,1821-1832
+src/room.ts
+  s_4f3d73861137de::t_439c8cc3019f33 132,206,449,1917,1919,1921,1928,1935-1941,2029-2034,2117-2122,2256
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_393108b811ff0e 4,143-149,421,424,448,451-452,473,480
+src/ui/MotionHeader.svelte
+  s_4f3d73861137de::t_305d48ddad06b0 1-152
+src/ui/MotionHeaderPage.svelte
+  s_4f3d73861137de::t_18e90edb7c8775 1-62
+src/ui/relative-time.test.ts
+  s_4f3d73861137de::t_5aba6218ca9f47 1-15
+src/ui/relative-time.ts
+  s_4f3d73861137de::t_d245801c2a13ae 1-13
+src/worker.ts
+  s_4f3d73861137de::t_0b0b4faf2cfb0b 44,1472,1525-1532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "87f0b0c60846d0aed6751928a94abd1e6426fe71",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

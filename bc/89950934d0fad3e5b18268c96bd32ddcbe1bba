@@ -1,0 +1,37 @@
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_3a10b3356f1660 40,155-159,172,189-190
+src/agent-do.ts
+  s_4f3d73861137de::t_b2ec0d58171064 3-4,49,303-334,339,381-383,392,1343,1349-1357,1364,1390-1391,1542-1548
+src/agent-tracing.test.ts
+  s_4f3d73861137de::t_84c40059164fbe 1-70
+src/agent-tracing.ts
+  s_4f3d73861137de::t_d509720d805e50 1-100
+src/connector-approvals.test.ts
+  s_4f3d73861137de::t_b7c4e629c623e3 2,15-16,51-73
+src/connector-approvals.ts
+  s_4f3d73861137de::t_96bf406521a93c 22-25,39-47,49,54-59
+src/pi/durable/turn-runtime.ts
+  s_4f3d73861137de::t_7161d0af0ae5b2 17,54,184-188
+src/room.ts
+  s_4f3d73861137de::t_dadf0bb0f5a4b8 2675,2685
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_b07edb78c638c7 914
+wrangler.jsonc
+  s_4f3d73861137de::t_2d439e8a788be3 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bc89950934d0fad3e5b18268c96bd32ddcbe1bba",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

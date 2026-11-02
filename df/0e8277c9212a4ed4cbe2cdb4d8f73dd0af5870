@@ -1,0 +1,27 @@
+README.md
+  s_4f3d73861137de::t_e5f6061fcb220f 22,24-29,37-56,58,60-63,65
+scripts/e2e-kill-mid-reply.mjs
+  s_4f3d73861137de::t_4128ce6e1f68bd 27
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_fc03c80e25de3f 64-66,140-147
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_c3d68d19066380 37
+src/ui/Showcase.svelte
+  s_4f3d73861137de::t_5c2fcd831e483b 17,96,110,253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "df0e8277c9212a4ed4cbe2cdb4d8f73dd0af5870",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}

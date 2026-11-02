@@ -1,0 +1,57 @@
+.gitignore
+  s_4f3d73861137de::t_b9aa488fda13fa 13
+README.md
+  s_4f3d73861137de::t_04e8ddd4c8fa02 3,5,7-16,75-124,153,157-158
+docs/security.md
+  s_4f3d73861137de::t_0600a9de23e32d 7-19,31
+package.json
+  s_4f3d73861137de::t_fa2cc4f471929c 15-17
+scripts/demo-review-request.mjs
+  s_4f3d73861137de::t_3cbefd7c75daff 1-105
+scripts/e2e-kill-mid-reply.mjs
+  s_4f3d73861137de::t_88f3c9d4efdb14 1-94
+scripts/e2e-security-boundary.mjs
+  s_4f3d73861137de::t_9f448b0f574aa4 1-212
+scripts/verify-security.mjs
+  s_4f3d73861137de::t_680c0e72e464fa 1-41
+src/agent-do.ts
+  s_4f3d73861137de::t_e3a93c5cef80c2 39-48,264-270,1229-1230,1234,1238-1245,1272-1385,1455,1468-1482,1963-1969
+src/connector-approvals.test.ts
+  s_4f3d73861137de::t_bdaab35be534e4 1-50
+src/connector-approvals.ts
+  s_4f3d73861137de::t_49e0c39f2d0d81 1-46
+src/room.ts
+  s_4f3d73861137de::t_616d26bd075a65 33,53,67,1270-1279,2652-2653,2660-2706,3210-3212,3440,3591-3593
+src/shared-features.ts
+  s_4f3d73861137de::t_a1a61b0a9d6f1d 69-71
+src/ui/AgentTree.svelte
+  s_4f3d73861137de::t_3f2721fe255c2f 11-12,17,60-68,378
+src/ui/Chat.svelte
+  s_4f3d73861137de::t_6605ae96a450cc 25,65-76,168,179,301-318,320,604-605,622-644,685,717,719,763,910-911,914,924,956,1311-1312
+src/ui/MotionHeaderPage.svelte
+  s_4f3d73861137de::t_3aa95380e2a258 3,5,45
+src/ui/Showcase.svelte
+  s_4f3d73861137de::t_94fec22677682b 1-4,7-8,10,12-14,16-27,29,31-33,35-60,63-67,73-91,93-113,116-117,119-121,127,132-134,138-143,146-257,261-266,268-313
+src/ui/showcase-script.ts
+  s_4f3d73861137de::t_6b07167fac9156 1-107
+src/web-push.ts
+  s_4f3d73861137de::t_b9829c8c2b2952 152
+src/worker.ts
+  s_4f3d73861137de::t_aa007df4a385a2 1017-1028,1030,1354,1368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4c41bc00dd5a21134f65a0b948195c68195777df",
+  "prompts": {},
+  "sessions": {
+    "s_4f3d73861137de": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febf7-4b34-7b21-970a-5f277fcc20a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <acoyfellow@users.noreply.github.com>"
+    }
+  }
+}
