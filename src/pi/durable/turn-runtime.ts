@@ -137,7 +137,8 @@ export class DurableTurnRuntime {
       const settled = await submission.wait(context);
       if (settled.status !== 'done') {
         const aborted = /abort/i.test(settled.reason);
-        return { status: aborted ? 'aborted' : 'failed', text: '', error: settled.reason };
+        const detail = (await this.liveSnapshot())?.runFailure?.detail;
+        return { status: aborted ? 'aborted' : 'failed', text: '', error: detail ? `${settled.reason}: ${detail}` : settled.reason };
       }
       const page = await root.entries({}, 50, undefined, context);
       const answer = page.items.find((entry) => entry.id === settled.answer);
@@ -158,6 +159,11 @@ export class DurableTurnRuntime {
     if (!this.harness) return;
     const { root } = await this.open();
     if (this.activeOperation === undefined || this.activeOperation === options.operationId) await root.abort(context);
+  }
+
+  private async liveSnapshot(): Promise<LiveState | undefined> {
+    const { harness, root } = await this.open();
+    return harness.snapshot(LiveDoc, root.id, context);
   }
 
   async snapshot(): Promise<{ messages: unknown[]; active: boolean; queued: number }> {
