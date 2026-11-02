@@ -1,0 +1,19 @@
+src/pi/durable/turn-runtime.ts
+  s_aff9605c3b4204::t_42b997c2a2bf71 140-141,164-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bbca1265a653e251bbe457f3b0263e2fb8c8ac1c",
+  "prompts": {},
+  "sessions": {
+    "s_aff9605c3b4204": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0806f-f6e6-7378-a167-08e626c7de42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jordan Coeyman <jcoeyman@cloudflare.com>"
+    }
+  }
+}
