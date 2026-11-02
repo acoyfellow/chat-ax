@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -18,16 +18,17 @@
     "rules": { "recommended": true }
   },
   "files": {
-    "ignore": [
-      "build/**",
-      "dist/**",
-      ".flue-vite/**",
-      ".flue-vite.wrangler.jsonc",
-      "src/bundles.generated.ts",
-      ".wrangler/**",
-      ".guardrail/**",
-      "tools/oxlint/anti-slop/**",
-      "**/*.svelte"
+    "includes": [
+      "**",
+      "!**/build",
+      "!**/dist",
+      "!**/.flue-vite",
+      "!**/.flue-vite.wrangler.jsonc",
+      "!**/src/bundles.generated.ts",
+      "!**/.wrangler",
+      "!**/.guardrail",
+      "!**/tools/oxlint/anti-slop",
+      "!**/*.svelte"
     ]
   }
 }
