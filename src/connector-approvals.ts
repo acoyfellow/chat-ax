@@ -1,3 +1,4 @@
+import { canApprovalMove, readApprovalStatus } from './approval-machine';
 import type { PendingMcpAction } from './mcp-approval';
 
 export type ApprovalDecision = 'approve' | 'deny';
@@ -31,8 +32,9 @@ export function decisionRefusal(
   if (!action) return 'Approval not found';
   if (action.actorId !== actor.id || action.connectorOwnerEmail !== actor.email)
     return 'Only the connector owner can decide this request';
-  if (action.status !== 'pending') return 'This request was already decided';
-  if (action.expiresAt <= now) return 'This request expired';
+  const status = readApprovalStatus(action.status, action.expiresAt, now);
+  if (status === 'expired') return 'This request expired';
+  if (!canApprovalMove(status, 'approve')) return 'This request was already decided';
   return null;
 }
 

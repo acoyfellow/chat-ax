@@ -5,6 +5,7 @@ import { promptWithSpeaker, type SpeakerConnectorStatus } from './turn-speaker';
 import { aiGatewayId, workersAIGatewayId } from './deployment-config';
 import { localModelReply } from './local-model';
 import { DurableObject, tracing } from 'cloudflare:workers';
+import { nextApprovalStatus, readApprovalStatus } from './approval-machine';
 import { type ActivityEntry, type ActivityOutcome, activityFor, activityKey, activityKeyPrefix, activityLimit, redactedArguments } from './activity-log';
 import { agentTraceName, type AgentTraceIdentity, approvalAttributes, type ApprovalTraceStage, chatSpanFinished, identityAttributes, traced } from './agent-tracing';
 import { fauxAssistantMessage, fauxProvider, fauxToolCall } from '@earendil-works/pi-ai/providers/faux';
@@ -1588,7 +1589,11 @@ export class AgentDO extends DurableObject<AgentEnv> {
   }
 
   private async pendingApprovals(): Promise<PendingMcpAction[]> {
-    return [...(await this.ctx.storage.list<PendingMcpAction>({ prefix: 'mcp-pending:' })).values()];
+    const now = Date.now();
+    return [...(await this.ctx.storage.list<PendingMcpAction>({ prefix: 'mcp-pending:' })).values()].map((action) => ({
+      ...action,
+      status: readApprovalStatus(action.status, action.expiresAt, now),
+    }));
   }
 
   private async decideConnectorApproval(id: string, decision: 'approve' | 'deny', actor: ApprovalActor): Promise<Response> {
@@ -1599,7 +1604,7 @@ export class AgentDO extends DurableObject<AgentEnv> {
       if (refusal || !action) return { refusal: refusal ?? 'Approval not found' };
       const tampered = await tamperRefusal(action);
       if (tampered) return { refusal: tampered };
-      const status = decision === 'approve' ? 'not-executed' : 'denied';
+      const status = nextApprovalStatus('pending', decision);
       const updated: PendingMcpAction = { ...action, status };
       await transaction.put(key, updated);
       if (decision === 'approve') await transaction.put(`mcp-execution:${id}`, { status: 'not-executed' } satisfies DurableMcpExecution);
@@ -1626,14 +1631,14 @@ export class AgentDO extends DurableObject<AgentEnv> {
         ),
       );
       await this.ctx.storage.transaction(async (transaction) => {
-        await transaction.put(`mcp-pending:${id}`, { ...action, status: 'succeeded' });
+        await transaction.put(`mcp-pending:${id}`, { ...action, status: nextApprovalStatus(action.status, 'ran') });
         await this.appendApprovalLog(transaction, action, 'ran', execution.result ?? '');
       });
       this.announceChange();
       return Response.json({ status: 'succeeded' });
     } catch (error) {
       await this.ctx.storage.transaction(async (transaction) => {
-        await transaction.put(`mcp-pending:${id}`, { ...action, status: 'outcome-unknown' });
+        await transaction.put(`mcp-pending:${id}`, { ...action, status: nextApprovalStatus(action.status, 'crashed') });
         await this.appendApprovalLog(transaction, action, 'failed', error instanceof Error ? error.message.slice(0, 200) : '');
       });
       this.announceChange();

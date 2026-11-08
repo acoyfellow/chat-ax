@@ -1,4 +1,5 @@
 <script>
+  import { approvalStatusMeaning } from '../approval-machine';
   import { ArrowDown, Command, LoaderCircle, Moon, Paperclip, SendHorizontal, Square, Sun, X } from '@lucide/svelte';
   import { marked, Renderer } from 'marked';
   import { onMount, untrack } from 'svelte';
@@ -166,15 +167,12 @@
   }
 
   function approvalStatusLabel(status) {
-    return {
-      pending: 'Awaiting approval',
-      denied: 'Denied — nothing executed',
-      running: 'Running',
-      'not-executed': 'Not executed',
-      succeeded: 'Approved — result shared',
-      failed: 'Failed — approval consumed',
-      'outcome-unknown': 'Error — outcome unknown',
-    }[status] ?? status;
+    return (approvalStatusMeaning[status] ?? approvalStatusMeaning['outcome-unknown']).label;
+  }
+
+  function approvalStatusAdvice(status) {
+    const meaning = approvalStatusMeaning[status] ?? approvalStatusMeaning['outcome-unknown'];
+    return `${meaning.detail} ${meaning.nextStep}`;
   }
 
   async function approveMcpAction(id) {
@@ -934,12 +932,8 @@
                   {:else}
                     <p>Status: {approvalStatusLabel(approval.status)}. Runs once, as {approval.connectorOwnerEmail}. Everyone here sees the result.</p>
                   {/if}
-                  {#if approval.status === 'outcome-unknown'}
-                    <p>The action may already have happened. Do not repeat it. Check the external service before requesting another action.</p>
-                  {:else if approval.status === 'not-executed'}
-                    <p>No external request has been dispatched. This approval is spent and will not run automatically.</p>
-                  {:else if approval.status === 'failed'}
-                    <p>The connector rejected the action or it failed after approval. This approval cannot be reused.</p>
+                  {#if approval.status !== 'pending'}
+                    <p class="approval-advice" data-approval-status={approval.status}>{approvalStatusAdvice(approval.status)}</p>
                   {/if}
                   {#if approval.status === 'pending' && approval.actorId === viewer.id}
                     <div class="approval-actions">

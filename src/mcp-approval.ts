@@ -1,3 +1,5 @@
+import type { ApprovalStatus } from './approval-machine';
+
 export type McpActionScope = {
   actorId: string;
   operationId: string;
@@ -14,7 +16,7 @@ export type PendingMcpAction = McpActionScope & {
   argumentsJson: string;
   expiresAt: number;
   kind?: 'connector' | 'agent-tool';
-  status: 'pending' | 'denied' | 'not-executed' | 'outcome-unknown' | 'succeeded' | 'running' | 'failed';
+  status: ApprovalStatus;
 };
 
 export type McpApproval = McpActionScope & {
